@@ -13,8 +13,10 @@ import android.widget.Button;
 import android.widget.TextView;
 
 import com.github.mikephil.charting.charts.LineChart;
+import com.github.mikephil.charting.data.Entry;
 import com.github.mikephil.charting.data.LineData;
 import com.github.mikephil.charting.data.LineDataSet;
+import com.github.mikephil.charting.interfaces.datasets.ILineDataSet;
 
 import java.util.Timer;
 import java.util.TimerTask;
@@ -120,47 +122,25 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
       mHandler.post( new Runnable() {
         public void run() {
           // TextViewに各加速度センサーの値を表示させる
-                    /*
-                    xTextView.setText(String.valueOf(currentAccelerationValues[0]));
-                    yTextView.setText(String.valueOf(currentAccelerationValues[1]));
-                    zTextView.setText(String.valueOf(currentAccelerationValues[2]));
-                    */
+          xTextView.setText(String.valueOf(currentAccelerationValues[0]));
+          yTextView.setText(String.valueOf(currentAccelerationValues[1]));
+          zTextView.setText(String.valueOf(currentAccelerationValues[2]));
 
-          // 各加速度の平均値を求める
-          if (raw_count == 14){
-            float x_ave = 0, y_ave = 0, z_ave = 0;
-            for (int i = 0; i < raw_count; i++){
-              x_ave += xValue[i];
-              y_ave += yValue[i];
-              z_ave += zValue[i];
-            }
-            x_ave /= raw_count + 1;
-            y_ave /= raw_count + 1;
-            z_ave /= raw_count + 1;
-
-            // TextViewに各加速度の15個のデータの平均値を表示する
-            xTextView.setText("X軸の平均値（n=15）：" + String.valueOf(x_ave) );
-            yTextView.setText("Y軸の平均値（n=15）：" + String.valueOf(y_ave) );
-            zTextView.setText("Z軸の平均値（n=15）：" + String.valueOf(z_ave) );
+          LineData data = mChart.getLineData();
+          if (data != null){
+              for (int i = 0; i < 3; i++) { // 3軸なのでそれぞれ処理します
+                  ILineDataSet set = data.getDataSetByIndex(i);
+                  if (set == null) {
+                      set = createSet(names[i], colors[i]); // ILineDataSetの初期化は別メソッドにまとめました
+                      data.addDataSet(set);
+                  }
+                  data.addEntry(new Entry(set.getEntryCount(), currentAccelerationValues[i]), i); // 実際にデータを追加する
+                  data.notifyDataChanged();
+              }
+              mChart.notifyDataSetChanged(); // 表示の更新のために変更を通知する
+              mChart.setVisibleXRangeMaximum(50); // 表示の幅を決定する
+              mChart.moveViewToX(data.getEntryCount()); // 最新のデータまで表示を移動させる
           }
-
-                    /*
-                    LineData data = mChart.getLineData();
-                    if (data != null){
-                        for (int i = 0; i < 3; i++) { // 3軸なのでそれぞれ処理します
-                            ILineDataSet set = data.getDataSetByIndex(i);
-                            if (set == null) {
-                                set = createSet(names[i], colors[i]); // ILineDataSetの初期化は別メソッドにまとめました
-                                data.addDataSet(set);
-                            }
-                            data.addEntry(new Entry(set.getEntryCount(), currentAccelerationValues[i]), i); // 実際にデータを追加する
-                            data.notifyDataChanged();
-                        }
-                        mChart.notifyDataSetChanged(); // 表示の更新のために変更を通知する
-                        mChart.setVisibleXRangeMaximum(50); // 表示の幅を決定する
-                        mChart.moveViewToX(data.getEntryCount()); // 最新のデータまで表示を移動させる
-                    }
-                    */
         }
       });
     }
@@ -182,34 +162,14 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
     // 加速度センサの値を変数に代入
     if (event.sensor.getType() == Sensor.TYPE_ACCELEROMETER) {
       // ローパスフィルタで重力値を抽出
-            /*
-            currentOrientationValues[0] = event.values[0] * 0.1f + currentOrientationValues[0] * (1.0f - 0.1f);
-            currentOrientationValues[1] = event.values[1] * 0.1f + currentOrientationValues[1] * (1.0f - 0.1f);
-            currentOrientationValues[2] = event.values[2] * 0.1f + currentOrientationValues[2] * (1.0f - 0.1f);
-            */
+      currentOrientationValues[0] = event.values[0] * 0.1f + currentOrientationValues[0] * (1.0f - 0.1f);
+      currentOrientationValues[1] = event.values[1] * 0.1f + currentOrientationValues[1] * (1.0f - 0.1f);
+      currentOrientationValues[2] = event.values[2] * 0.1f + currentOrientationValues[2] * (1.0f - 0.1f);
 
       // 重力値を取り除く
-            /*
-            currentAccelerationValues[0] = event.values[0] - currentOrientationValues[0];
-            currentAccelerationValues[1] = event.values[1] - currentOrientationValues[1];
-            currentAccelerationValues[2] = event.values[2] - currentOrientationValues[2];
-            */
-
-      if (raw_count < 14) {
-        xValue[raw_count] = event.values[0];
-        yValue[raw_count] = event.values[1];
-        zValue[raw_count] = event.values[2];
-        raw_count++;
-      } else {
-        for (int i = 0; i < raw_count-1; i++){
-          xValue[i] = xValue[i+1];
-          yValue[i] = yValue[i+1];
-          zValue[i] = zValue[i+1];
-        }
-        xValue[raw_count] = event.values[0];
-        yValue[raw_count] = event.values[1];
-        zValue[raw_count] = event.values[2];
-      }
+      currentAccelerationValues[0] = event.values[0] - currentOrientationValues[0];
+      currentAccelerationValues[1] = event.values[1] - currentOrientationValues[1];
+      currentAccelerationValues[2] = event.values[2] - currentOrientationValues[2];
     }
   }
 
