@@ -36,9 +36,14 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
   // ローパス、ハイパスフィルタ後の加速度値
   private float[] currentAccelerationValues = { 0.0f, 0.0f, 0.0f };
 
+  // 各加速度の配列
   private float[] xValue = { 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f };
   private float[] yValue = { 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f };
   private float[] zValue = { 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f };
+
+  private float x, y, z;
+
+  private int raw_count = 0;
 
   // タイマー用の変数
   private Timer mainTimer;					//タイマー用
@@ -52,8 +57,6 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
 
   Button button = null;
   private boolean flag = true;
-
-  private int raw_count = 0;
 
   @Override
   protected void onCreate(Bundle savedInstanceState) {
@@ -122,24 +125,71 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
       mHandler.post( new Runnable() {
         public void run() {
           // TextViewに各加速度センサーの値を表示させる
+          /*
           xTextView.setText(String.valueOf(currentAccelerationValues[0]));
           yTextView.setText(String.valueOf(currentAccelerationValues[1]));
           zTextView.setText(String.valueOf(currentAccelerationValues[2]));
+          */
 
-          LineData data = mChart.getLineData();
-          if (data != null){
+          if (raw_count < 15) {
+            // 各加速度の値を更新
+            xValue[raw_count] = x;
+            yValue[raw_count] = y;
+            zValue[raw_count] = z;
+            raw_count++;
+          } else {
+            // 各加速度の平均値を求める
+            float[] ave = {0.0f, 0.0f, 0.0f};
+            for (int i = 0; i < raw_count; i++) {
+              ave[0] += xValue[i];
+              ave[1] += yValue[i];
+              ave[2] += zValue[i];
+            }
+            ave[0] /= raw_count;
+            ave[1] /= raw_count;
+            ave[2] /= raw_count;
+
+            /*
+            Log.d("X-ave", String.valueOf(ave[0]));
+            Log.d("Y-ave", String.valueOf(ave[1]));
+            Log.d("Z-ave", String.valueOf(ave[2]));
+            */
+
+            // 各加速度の値を更新
+            for (int i = 0; i < raw_count - 1; i++) {
+              xValue[i] = xValue[i + 1];
+              yValue[i] = yValue[i + 1];
+              zValue[i] = zValue[i + 1];
+            }
+            xValue[raw_count - 1] = x;
+            yValue[raw_count - 1] = y;
+            zValue[raw_count - 1] = z;
+
+            xTextView.setText("X : " + String.valueOf(xValue[raw_count-1]) + " - " + String.valueOf(ave[0]) + " = " + String.valueOf(xValue[raw_count-1] - ave[0]));
+            yTextView.setText("Y : " + String.valueOf(yValue[raw_count-1]) + " - " + String.valueOf(ave[1]) + " = " + String.valueOf(yValue[raw_count-1] - ave[1]));
+            zTextView.setText("Z : " + String.valueOf(zValue[raw_count-1]) + " - " + String.valueOf(ave[2]) + " = " + String.valueOf(zValue[raw_count-1] - ave[2]));
+
+            ave[0] = xValue[raw_count-1] - ave[0];
+            ave[1] = yValue[raw_count-1] - ave[1];
+            ave[2] = zValue[raw_count-1] - ave[2];
+
+            // グラフの描画
+            LineData data = mChart.getLineData();
+            if (data != null) {
               for (int i = 0; i < 3; i++) { // 3軸なのでそれぞれ処理します
-                  ILineDataSet set = data.getDataSetByIndex(i);
-                  if (set == null) {
-                      set = createSet(names[i], colors[i]); // ILineDataSetの初期化は別メソッドにまとめました
-                      data.addDataSet(set);
-                  }
-                  data.addEntry(new Entry(set.getEntryCount(), currentAccelerationValues[i]), i); // 実際にデータを追加する
-                  data.notifyDataChanged();
+                ILineDataSet set = data.getDataSetByIndex(i);
+                if (set == null) {
+                  set = createSet(names[i], colors[i]); // ILineDataSetの初期化は別メソッドにまとめました
+                  data.addDataSet(set);
+                }
+                //data.addEntry(new Entry(set.getEntryCount(), currentAccelerationValues[i]), i); // 実際にデータを追加する
+                data.addEntry(new Entry(set.getEntryCount(), ave[i]), i); // 実際にデータを追加する
+                data.notifyDataChanged();
               }
               mChart.notifyDataSetChanged(); // 表示の更新のために変更を通知する
               mChart.setVisibleXRangeMaximum(50); // 表示の幅を決定する
               mChart.moveViewToX(data.getEntryCount()); // 最新のデータまで表示を移動させる
+            }
           }
         }
       });
@@ -162,6 +212,7 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
     // 加速度センサの値を変数に代入
     if (event.sensor.getType() == Sensor.TYPE_ACCELEROMETER) {
       // ローパスフィルタで重力値を抽出
+      /*
       currentOrientationValues[0] = event.values[0] * 0.1f + currentOrientationValues[0] * (1.0f - 0.1f);
       currentOrientationValues[1] = event.values[1] * 0.1f + currentOrientationValues[1] * (1.0f - 0.1f);
       currentOrientationValues[2] = event.values[2] * 0.1f + currentOrientationValues[2] * (1.0f - 0.1f);
@@ -170,6 +221,11 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
       currentAccelerationValues[0] = event.values[0] - currentOrientationValues[0];
       currentAccelerationValues[1] = event.values[1] - currentOrientationValues[1];
       currentAccelerationValues[2] = event.values[2] - currentOrientationValues[2];
+      */
+
+      x = event.values[0];
+      y = event.values[1];
+      z = event.values[2];
     }
   }
 
