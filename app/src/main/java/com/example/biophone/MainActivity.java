@@ -138,7 +138,7 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
             zValue[raw_count] = z;
             raw_count++;
           } else {
-            // 各加速度の平均値を求める
+            // 各軸の加速度の平均値を求める
             float[] ave = {0.0f, 0.0f, 0.0f};
             for (int i = 0; i < raw_count; i++) {
               ave[0] += xValue[i];
@@ -149,13 +149,7 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
             ave[1] /= raw_count;
             ave[2] /= raw_count;
 
-            /*
-            Log.d("X-ave", String.valueOf(ave[0]));
-            Log.d("Y-ave", String.valueOf(ave[1]));
-            Log.d("Z-ave", String.valueOf(ave[2]));
-            */
-
-            // 各加速度の値を更新
+            // 各軸の加速度の値を更新
             for (int i = 0; i < raw_count - 1; i++) {
               xValue[i] = xValue[i + 1];
               yValue[i] = yValue[i + 1];
@@ -169,6 +163,7 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
             yTextView.setText("Y : " + String.valueOf(yValue[raw_count-1]) + " - " + String.valueOf(ave[1]) + " = " + String.valueOf(yValue[raw_count-1] - ave[1]));
             zTextView.setText("Z : " + String.valueOf(zValue[raw_count-1]) + " - " + String.valueOf(ave[2]) + " = " + String.valueOf(zValue[raw_count-1] - ave[2]));
 
+            // 各軸の加速度値から各軸の移動平均値を引く
             ave[0] = xValue[raw_count-1] - ave[0];
             ave[1] = yValue[raw_count-1] - ave[1];
             ave[2] = zValue[raw_count-1] - ave[2];
