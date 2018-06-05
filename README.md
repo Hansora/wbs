@@ -1,2 +1,2 @@
 # Biophone
-Estimate heart rate from acceleration of smart phone.
+Estimate heart rate from smartphone acceleration sensor
