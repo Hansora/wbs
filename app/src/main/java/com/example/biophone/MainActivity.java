@@ -169,10 +169,25 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
             ave[2] = zValue[raw_count-1] - ave[2];
 
             // 7-13Hzを通すバターワース型バンドパスフィルタをかける
+            //
+            //
+            //
+            //
+
 
             // 各軸の2乗の和の平方根を求める
+            //
+            //
+            //
+            //
+
 
             // 0.66-2.5Hzを通すバターワース型バンドパスフィルタをかける
+            //
+            //
+            //
+            //
+
 
             // グラフの描画
             LineData data = mChart.getLineData();
