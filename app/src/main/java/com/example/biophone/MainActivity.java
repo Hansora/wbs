@@ -21,6 +21,8 @@ import com.github.mikephil.charting.interfaces.datasets.ILineDataSet;
 import java.util.Timer;
 import java.util.TimerTask;
 
+import uk.me.berndporr.iirj.Butterworth;
+
 public class MainActivity extends AppCompatActivity implements SensorEventListener {
   SensorManager manager;
   Sensor sensor;
@@ -40,6 +42,11 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
   private float[] xValue = { 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f };
   private float[] yValue = { 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f };
   private float[] zValue = { 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f };
+
+  // フィルタ後の各加速度の配列
+  private float xBandValue;
+  private float yBandValue;
+  private float zBandValue;
 
   private float x, y, z;
 
@@ -168,13 +175,20 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
             ave[1] = yValue[raw_count-1] - ave[1];
             ave[2] = zValue[raw_count-1] - ave[2];
 
+            ///////////////////////////////////////////////////////
+            // バターワース型バンドパスフィルタのインスタンス生成
+            Butterworth butterworth = new Butterworth();
+            butterworth.bandPass(1, 100, 10, 6);
+            ///////////////////////////////////////////////////////
+
+            ///////////////////////////////////////////////////////
             // 7-13Hzを通すバターワース型バンドパスフィルタをかける
-            //
-            //
-            //
-            //
+            xBandValue = (float) butterworth.filter(ave[0]);
+            yBandValue = (float) butterworth.filter(ave[1]);
+            zBandValue = (float) butterworth.filter(ave[2]);
+            ///////////////////////////////////////////////////////
 
-
+            ///////////////////////////////////////////////////////
             // 各軸の2乗の和の平方根を求める
             //
             //
