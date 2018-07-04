@@ -43,6 +43,12 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
   private float[] yValue = new float[15];
   private float[] zValue = new float[15];
 
+  // 7-13Hzを通す1次のバターワース型バンドパスフィルタ
+  Butterworth butterworth1 = new Butterworth();
+
+  // 0.66-2.5Hzを通す1次のバターワース型バンドパスフィルタ
+  Butterworth butterworth2 = new Butterworth();
+
   // 平方和の配列
   private float sumXYZ;
 
@@ -102,6 +108,12 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
 
     // 空のLineData型インスタンスを追加
     mChart.setData(new LineData());
+
+    // 7-13Hzを通す1次のバターワース型バンドパスフィルタの作成
+    butterworth1.bandPass(1, 100, 10, 6);
+
+    // 0.66-2.5Hzを通す1次のバターワース型バンドパスフィルタ
+    butterworth2.bandPass(1, 100, 1.58, 1.84);
 
     // ボタンを押したとき
     button.setOnClickListener(new View.OnClickListener() {
@@ -186,16 +198,10 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
             ave[2] = zValue[raw_count-1] - ave[2];
 
             ////////////////////////////////////////////////////////////
-            // バターワース型バンドパスフィルタのインスタンス生成
-            Butterworth butterworth = new Butterworth();
-            butterworth.bandPass(1, 100, 10, 6);  // 7-13Hzを通すバンドパスフィルタ
-            ////////////////////////////////////////////////////////////
-
-            ////////////////////////////////////////////////////////////
             // 7-13Hzを通すバターワース型バンドパスフィルタをかける
-            xBandValue = (float) butterworth.filter(ave[0]);
-            yBandValue = (float) butterworth.filter(ave[1]);
-            zBandValue = (float) butterworth.filter(ave[2]);
+            xBandValue = (float) butterworth1.filter(ave[0]);
+            yBandValue = (float) butterworth1.filter(ave[1]);
+            zBandValue = (float) butterworth1.filter(ave[2]);
             ////////////////////////////////////////////////////////////
 
             ////////////////////////////////////////////////////////////
@@ -205,9 +211,8 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
 
             ////////////////////////////////////////////////////////////
             // 0.66-2.5Hzを通すバターワース型バンドパスフィルタをかける
-            butterworth.bandPass(1, 100, 1.58, 1.84);  // 0.66-2.5Hzを通すバンドパスフィルタ
             if (pulseWaveCnt < 1000) {
-              pulseWave[pulseWaveCnt] = (float) butterworth.filter(sumXYZ);
+              pulseWave[pulseWaveCnt] = (float) butterworth2.filter(sumXYZ);
               pulseWaveCnt++;
             } else {
               ////////////////////////////////////////
@@ -217,12 +222,13 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
               for (int i = 0; i < pulseWaveCnt - 1; i++) {
                 pulseWave[i] = pulseWave[i + 1];
               }
-              pulseWave[pulseWaveCnt - 1] = (float) butterworth.filter(sumXYZ);
+              pulseWave[pulseWaveCnt - 1] = (float) butterworth2.filter(sumXYZ);
             }
             ////////////////////////////////////////////////////////////
 
             ////////////////////////////////////////////////////////////
             // FFTを行う
+            ////////////////////////////////////////////////////////////
 
             // グラフの描画
             LineData data = mChart.getLineData();
