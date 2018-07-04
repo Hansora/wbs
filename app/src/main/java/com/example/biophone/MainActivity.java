@@ -39,9 +39,15 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
   private float[] currentAccelerationValues = { 0.0f, 0.0f, 0.0f };
 
   // 各加速度の配列
-  private float[] xValue = { 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f };
-  private float[] yValue = { 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f };
-  private float[] zValue = { 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f };
+  private float[] xValue = new float[15];
+  private float[] yValue = new float[15];
+  private float[] zValue = new float[15];
+
+  // 平方和の配列
+  private float sumXYZ;
+
+  // パルス波形データの配列
+  private float[] pulseWave = new float[1000];
 
   // フィルタ後の各加速度の配列
   private float xBandValue;
@@ -50,7 +56,11 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
 
   private float x, y, z;
 
+  // 生データの個数をカウントする
   private int raw_count = 0;
+
+  // パルス波形のデータをカウントする
+  private int pulseWaveCnt = 0;
 
   // タイマー用の変数
   private Timer mainTimer;					//タイマー用
@@ -175,33 +185,28 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
             ave[1] = yValue[raw_count-1] - ave[1];
             ave[2] = zValue[raw_count-1] - ave[2];
 
-            ///////////////////////////////////////////////////////
+            ////////////////////////////////////////////////////////////
             // バターワース型バンドパスフィルタのインスタンス生成
             Butterworth butterworth = new Butterworth();
-            butterworth.bandPass(1, 100, 10, 6);
-            ///////////////////////////////////////////////////////
+            butterworth.bandPass(1, 100, 10, 6);  // 7-13Hzを通すバンドパスフィルタ
+            ////////////////////////////////////////////////////////////
 
-            ///////////////////////////////////////////////////////
+            ////////////////////////////////////////////////////////////
             // 7-13Hzを通すバターワース型バンドパスフィルタをかける
             xBandValue = (float) butterworth.filter(ave[0]);
             yBandValue = (float) butterworth.filter(ave[1]);
             zBandValue = (float) butterworth.filter(ave[2]);
-            ///////////////////////////////////////////////////////
+            ////////////////////////////////////////////////////////////
 
-            ///////////////////////////////////////////////////////
+            ////////////////////////////////////////////////////////////
             // 各軸の2乗の和の平方根を求める
-            //
-            //
-            //
-            //
+            sumXYZ = (float) Math.sqrt( Math.pow(xBandValue, 2) + Math.pow(yBandValue, 2) + Math.pow(zBandValue, 2) );
+            ////////////////////////////////////////////////////////////
 
-
+            ////////////////////////////////////////////////////////////
             // 0.66-2.5Hzを通すバターワース型バンドパスフィルタをかける
-            //
-            //
-            //
-            //
-
+            butterworth.bandPass(1, 100, 1.58, 1.84);  // 0.66-2.5Hzを通すバンドパスフィルタ
+            ////////////////////////////////////////////////////////////
 
             // グラフの描画
             LineData data = mChart.getLineData();
