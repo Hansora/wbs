@@ -206,7 +206,23 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
             ////////////////////////////////////////////////////////////
             // 0.66-2.5Hzを通すバターワース型バンドパスフィルタをかける
             butterworth.bandPass(1, 100, 1.58, 1.84);  // 0.66-2.5Hzを通すバンドパスフィルタ
+            if (pulseWaveCnt < 1000) {
+              pulseWave[pulseWaveCnt] = (float) butterworth.filter(sumXYZ);
+              pulseWaveCnt++;
+            } else {
+              ////////////////////////////////////////
+              // FFTを行う
+              ////////////////////////////////////////
+
+              for (int i = 0; i < pulseWaveCnt - 1; i++) {
+                pulseWave[i] = pulseWave[i + 1];
+              }
+              pulseWave[pulseWaveCnt - 1] = (float) butterworth.filter(sumXYZ);
+            }
             ////////////////////////////////////////////////////////////
+
+            ////////////////////////////////////////////////////////////
+            // FFTを行う
 
             // グラフの描画
             LineData data = mChart.getLineData();
