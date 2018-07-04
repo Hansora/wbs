@@ -18,6 +18,8 @@ import com.github.mikephil.charting.data.LineData;
 import com.github.mikephil.charting.data.LineDataSet;
 import com.github.mikephil.charting.interfaces.datasets.ILineDataSet;
 
+import org.jtransforms.fft.DoubleFFT_1D;
+
 import java.util.Timer;
 import java.util.TimerTask;
 
@@ -49,11 +51,17 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
   // 0.66-2.5Hzを通す1次のバターワース型バンドパスフィルタ
   Butterworth butterworth2 = new Butterworth();
 
+  // FFTのサイズ
+  private int FFT_SIZE = 1000;
+
   // 平方和の配列
   private float sumXYZ;
 
   // パルス波形データの配列
-  private float[] pulseWave = new float[1000];
+  private float[] pulseWave = new float[FFT_SIZE];
+
+  // FFTのインスタンス生成
+  DoubleFFT_1D fft = new DoubleFFT_1D(FFT_SIZE);
 
   // フィルタ後の各加速度の配列
   private float xBandValue;
