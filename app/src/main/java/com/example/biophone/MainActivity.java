@@ -13,10 +13,8 @@ import android.widget.Button;
 import android.widget.TextView;
 
 import com.github.mikephil.charting.charts.LineChart;
-import com.github.mikephil.charting.data.Entry;
 import com.github.mikephil.charting.data.LineData;
 import com.github.mikephil.charting.data.LineDataSet;
-import com.github.mikephil.charting.interfaces.datasets.ILineDataSet;
 
 import org.jtransforms.fft.DoubleFFT_1D;
 
@@ -196,14 +194,14 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
             yValue[raw_count - 1] = y;
             zValue[raw_count - 1] = z;
 
-            xTextView.setText("X : " + String.valueOf(xValue[raw_count-1]) + " - " + String.valueOf(ave[0]) + " = " + String.valueOf(xValue[raw_count-1] - ave[0]));
-            yTextView.setText("Y : " + String.valueOf(yValue[raw_count-1]) + " - " + String.valueOf(ave[1]) + " = " + String.valueOf(yValue[raw_count-1] - ave[1]));
-            zTextView.setText("Z : " + String.valueOf(zValue[raw_count-1]) + " - " + String.valueOf(ave[2]) + " = " + String.valueOf(zValue[raw_count-1] - ave[2]));
-
             // 各軸の加速度値から各軸の移動平均値を引く
             ave[0] = xValue[raw_count-1] - ave[0];
             ave[1] = yValue[raw_count-1] - ave[1];
             ave[2] = zValue[raw_count-1] - ave[2];
+
+            xTextView.setText("X : " + ave[0]);
+            yTextView.setText("Y : " + ave[1]);
+            zTextView.setText("Z : " + ave[2]);
 
             ////////////////////////////////////////////////////////////
             // 7-13Hzを通すバターワース型バンドパスフィルタをかける
@@ -239,6 +237,7 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
             ////////////////////////////////////////////////////////////
 
             // グラフの描画
+            /*
             LineData data = mChart.getLineData();
             if (data != null) {
               for (int i = 0; i < 3; i++) { // 3軸なのでそれぞれ処理します
@@ -255,6 +254,7 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
               mChart.setVisibleXRangeMaximum(50); // 表示の幅を決定する
               mChart.moveViewToX(data.getEntryCount()); // 最新のデータまで表示を移動させる
             }
+            */
           }
         }
       });
