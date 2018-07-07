@@ -13,8 +13,10 @@ import android.widget.Button;
 import android.widget.TextView;
 
 import com.github.mikephil.charting.charts.LineChart;
+import com.github.mikephil.charting.data.Entry;
 import com.github.mikephil.charting.data.LineData;
 import com.github.mikephil.charting.data.LineDataSet;
+import com.github.mikephil.charting.interfaces.datasets.ILineDataSet;
 
 import org.jtransforms.fft.DoubleFFT_1D;
 
@@ -27,6 +29,7 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
   SensorManager manager;
   Sensor sensor;
 
+  // 表示用のテキストビュー
   TextView xTextView;
   TextView yTextView;
   TextView zTextView;
@@ -38,7 +41,7 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
   // ローパス、ハイパスフィルタ後の加速度値
   private float[] currentAccelerationValues = { 0.0f, 0.0f, 0.0f };
 
-  // 各加速度の配列
+  // 各加速度用の配列
   private float[] xValue = new float[15];
   private float[] yValue = new float[15];
   private float[] zValue = new float[15];
@@ -52,7 +55,7 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
   // FFTのサイズ
   private int FFT_SIZE = 1000;
 
-  // 平方和の配列
+  // 各軸の2乗の和の平方根
   private float sumXYZ;
 
   // パルス波形データの配列
@@ -232,12 +235,7 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
             }
             ////////////////////////////////////////////////////////////
 
-            ////////////////////////////////////////////////////////////
-            // FFTを行う
-            ////////////////////////////////////////////////////////////
-
             // グラフの描画
-            /*
             LineData data = mChart.getLineData();
             if (data != null) {
               for (int i = 0; i < 3; i++) { // 3軸なのでそれぞれ処理します
@@ -247,14 +245,13 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
                   data.addDataSet(set);
                 }
                 //data.addEntry(new Entry(set.getEntryCount(), currentAccelerationValues[i]), i); // 実際にデータを追加する
-                data.addEntry(new Entry(set.getEntryCount(), ave[i]), i); // 実際にデータを追加する
+                data.addEntry(new Entry(data.getEntryCount(), ave[i]), i); // 実際にデータを追加する
                 data.notifyDataChanged();
               }
               mChart.notifyDataSetChanged(); // 表示の更新のために変更を通知する
               mChart.setVisibleXRangeMaximum(50); // 表示の幅を決定する
               mChart.moveViewToX(data.getEntryCount()); // 最新のデータまで表示を移動させる
             }
-            */
           }
         }
       });
