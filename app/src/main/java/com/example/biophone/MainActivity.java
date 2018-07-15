@@ -194,7 +194,7 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
             raw_count++;
           } else {
             // 平均値の配列を0で初期化する
-            for (int i = 0; i < raw_count; i++) {
+            for (int i = 0; i < 3; i++) {
               ave[i] = 0;
             }
             // 各軸の加速度の平均値を求める
@@ -259,12 +259,13 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
               maxInd = 0;
               for (int i = 0; i < FFT_SIZE / 2; i++) {
                 magnitude = Math.sqrt( Math.pow(fft_data[2*i], 2) + Math.pow(fft_data[2*i+1], 2) );
-                if (i * fs / FFT_SIZE >= 0.66 && i * fs / FFT_SIZE <= 2.5 && maxMagnitude < magnitude) {
+                if ((double) i * fs / FFT_SIZE >= 0.66 && (double) i * fs / FFT_SIZE <= 2.5 && maxMagnitude < magnitude) {
                   maxMagnitude = magnitude;
                   maxInd = i;
                 }
               }
-              fftTextView.setText("ピーク周波数：" + maxInd * fs / FFT_SIZE + "\n心拍数：" + maxInd * fs / FFT_SIZE * 60);
+              System.out.println("maxInd : " + maxInd + "  maxMagnitude : " + maxMagnitude);
+              fftTextView.setText("ピーク周波数：" + (double) maxInd * fs / FFT_SIZE + "\n心拍数：" + (double) maxInd * fs / FFT_SIZE * 60);
               ////////////////////////////////////////
 
               // 値の更新
