@@ -26,6 +26,7 @@ import java.util.TimerTask;
 import uk.me.berndporr.iirj.Butterworth;
 
 public class MainActivity extends AppCompatActivity implements SensorEventListener {
+  // センサ関連
   SensorManager manager;
   Sensor sensor;
 
@@ -33,6 +34,7 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
   TextView xTextView;
   TextView yTextView;
   TextView zTextView;
+  TextView fftTextView;
 
   // 加速度用の変数
   // 端末が実際に取得した加速度値
@@ -42,9 +44,9 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
   private float[] currentAccelerationValues = { 0.0f, 0.0f, 0.0f };
 
   // 各加速度用の配列
-  private float[] xValue = new float[15];
-  private float[] yValue = new float[15];
-  private float[] zValue = new float[15];
+  private double[] xValue = new double[15];
+  private double[] yValue = new double[15];
+  private double[] zValue = new double[15];
 
   // 7-13Hzを通す1次のバターワース型バンドパスフィルタ
   Butterworth butterworth1 = new Butterworth();
@@ -52,30 +54,41 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
   // 0.66-2.5Hzを通す1次のバターワース型バンドパスフィルタ
   Butterworth butterworth2 = new Butterworth();
 
+  // 各軸の2乗の和の平方根
+  private double sumXYZ;
+
   // FFTのサイズ
   private int FFT_SIZE = 1000;
-
-  // 各軸の2乗の和の平方根
-  private float sumXYZ;
-
-  // パルス波形データの配列
-  private float[] pulseWave = new float[FFT_SIZE];
 
   // FFTのインスタンス生成
   DoubleFFT_1D fft = new DoubleFFT_1D(FFT_SIZE);
 
+  // FFT後のデータ配列
+  double[] fft_data = new double[FFT_SIZE];
+
+  // サンプリング周波数
+  int fs = 100;
+
+  // ピーク周波数のための変数
+  int maxInd;
+  double magnitude;
+  double maxMagnitude;
+
+  // パルス波形データの配列
+  private double[] pulseWave = new double[FFT_SIZE];
+
+  // パルス波形のデータをカウントする
+  private int pulseWaveCnt = 0;
+
   // フィルタ後の各加速度の配列
-  private float xBandValue;
-  private float yBandValue;
-  private float zBandValue;
+  private double xBandValue;
+  private double yBandValue;
+  private double zBandValue;
 
   private float x, y, z;
 
   // 生データの個数をカウントする
   private int raw_count = 0;
-
-  // パルス波形のデータをカウントする
-  private int pulseWaveCnt = 0;
 
   // タイマー用の変数
   private Timer mainTimer;					//タイマー用
@@ -96,9 +109,10 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
     setContentView(R.layout.activity_main);
 
     // TextViewの取得
-    xTextView = (TextView)findViewById(R.id.xValue);
-    yTextView = (TextView)findViewById(R.id.yValue);
-    zTextView = (TextView)findViewById(R.id.zValue);
+    xTextView = (TextView) findViewById(R.id.xValue);
+    yTextView = (TextView) findViewById(R.id.yValue);
+    zTextView = (TextView) findViewById(R.id.zValue);
+    fftTextView = (TextView) findViewById(R.id.fft);
 
     // LineChartの取得
     mChart = (LineChart) findViewById(R.id.lineChart);
@@ -177,7 +191,7 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
             raw_count++;
           } else {
             // 各軸の加速度の平均値を求める
-            float[] ave = {0.0f, 0.0f, 0.0f};
+            double[] ave = new double[3];
             for (int i = 0; i < raw_count; i++) {
               ave[0] += xValue[i];
               ave[1] += yValue[i];
@@ -220,14 +234,34 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
 
             ////////////////////////////////////////////////////////////
             // 0.66-2.5Hzを通すバターワース型バンドパスフィルタをかける
-            if (pulseWaveCnt < 1000) {
+            if (pulseWaveCnt < FFT_SIZE) {
               pulseWave[pulseWaveCnt] = (float) butterworth2.filter(sumXYZ);
               pulseWaveCnt++;
             } else {
               ////////////////////////////////////////
               // FFTを行う
+
+              // データをコピー
+              for (int i = 0; i < FFT_SIZE; i++) {
+                fft_data[i] = pulseWave[i];
+              }
+              // FFT
+              fft.realForward(fft_data);
+
+              // ピーク周波数を求める
+              maxMagnitude = -1;
+              maxInd = 0;
+              for (int i = 0; i < FFT_SIZE / 2; i++) {
+                magnitude = Math.sqrt( Math.pow(fft_data[2*i], 2) + Math.pow(fft_data[2*i+1], 2) );
+                if (i * fs / FFT_SIZE >= 0.66 && i * fs / FFT_SIZE <= 2.5 && maxMagnitude < magnitude) {
+                  maxMagnitude = magnitude;
+                  maxInd = i;
+                }
+              }
+              fftTextView.setText("ピーク周波数：" + maxInd * fs / FFT_SIZE + "\n心拍数：" + maxInd * fs / FFT_SIZE * 60);
               ////////////////////////////////////////
 
+              // 値の更新
               for (int i = 0; i < pulseWaveCnt - 1; i++) {
                 pulseWave[i] = pulseWave[i + 1];
               }
@@ -245,7 +279,7 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
                   data.addDataSet(set);
                 }
                 //data.addEntry(new Entry(set.getEntryCount(), currentAccelerationValues[i]), i); // 実際にデータを追加する
-                data.addEntry(new Entry(data.getEntryCount(), ave[i]), i); // 実際にデータを追加する
+                data.addEntry(new Entry(data.getEntryCount(), (float) ave[i]), i); // 実際にデータを追加する
                 data.notifyDataChanged();
               }
               mChart.notifyDataSetChanged(); // 表示の更新のために変更を通知する
