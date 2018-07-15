@@ -48,6 +48,9 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
   private double[] yValue = new double[15];
   private double[] zValue = new double[15];
 
+  // 平均値のための配列
+  double[] ave = new double[3];
+
   // 7-13Hzを通す1次のバターワース型バンドパスフィルタ
   Butterworth butterworth1 = new Butterworth();
 
@@ -190,8 +193,11 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
             zValue[raw_count] = z;
             raw_count++;
           } else {
+            // 平均値の配列を0で初期化する
+            for (int i = 0; i < raw_count; i++) {
+              ave[i] = 0;
+            }
             // 各軸の加速度の平均値を求める
-            double[] ave = new double[3];
             for (int i = 0; i < raw_count; i++) {
               ave[0] += xValue[i];
               ave[1] += yValue[i];
