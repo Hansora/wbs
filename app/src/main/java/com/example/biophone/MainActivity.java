@@ -268,6 +268,23 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
               fftTextView.setText("ピーク周波数：" + (double) maxInd * fs / FFT_SIZE + "\n心拍数：" + (double) maxInd * fs / FFT_SIZE * 60);
               ////////////////////////////////////////
 
+              ///////////////////////////////////////////////////////////
+              // グラフの描画
+              LineData data = mChart.getLineData();
+              if (data != null) {
+                ILineDataSet set = data.getDataSetByIndex(0);
+                if (set == null) {
+                  set = createSet("heart_rate", Color.BLUE);
+                  data.addDataSet(set);
+                }
+                data.addEntry( new Entry( data.getEntryCount(), (float) maxInd * fs / FFT_SIZE *60 ), 0 );
+                data.notifyDataChanged();
+              }
+              mChart.notifyDataSetChanged();
+              mChart.setVisibleXRangeMaximum(50); // 表示の幅を決定する
+              mChart.moveViewToX(data.getEntryCount()); // 最新のデータまで表示を移動させる
+              ///////////////////////////////////////////////////////////
+
               // 値の更新
               for (int i = 0; i < pulseWaveCnt - 1; i++) {
                 pulseWave[i] = pulseWave[i + 1];
@@ -277,6 +294,7 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
             ////////////////////////////////////////////////////////////
 
             // グラフの描画
+            /*
             LineData data = mChart.getLineData();
             if (data != null) {
               for (int i = 0; i < 3; i++) { // 3軸なのでそれぞれ処理します
@@ -293,6 +311,7 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
               mChart.setVisibleXRangeMaximum(50); // 表示の幅を決定する
               mChart.moveViewToX(data.getEntryCount()); // 最新のデータまで表示を移動させる
             }
+            */
           }
         }
       });
