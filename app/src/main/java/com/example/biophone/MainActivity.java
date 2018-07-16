@@ -179,13 +179,7 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
       // 定期的に実行したい処理を記述（Viewはさらに別のスレッドが必要）
       mHandler.post( new Runnable() {
         public void run() {
-          // TextViewに各加速度センサーの値を表示させる
-          /*
-          xTextView.setText(String.valueOf(currentAccelerationValues[0]));
-          yTextView.setText(String.valueOf(currentAccelerationValues[1]));
-          zTextView.setText(String.valueOf(currentAccelerationValues[2]));
-          */
-
+          // 生データが15個集まったら、平均値を求める
           if (raw_count < 15) {
             // 各加速度の値を更新
             xValue[raw_count] = x;
@@ -193,20 +187,25 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
             zValue[raw_count] = z;
             raw_count++;
           } else {
+            //////////////////////////////////////////
+            // 各軸の加速度の平均値を求める
             // 平均値の配列を0で初期化する
             for (int i = 0; i < 3; i++) {
               ave[i] = 0;
             }
+
             // 各軸の加速度の平均値を求める
             for (int i = 0; i < raw_count; i++) {
-              ave[0] += xValue[i];
-              ave[1] += yValue[i];
-              ave[2] += zValue[i];
+              ave[0] += xValue[i];  // x軸
+              ave[1] += yValue[i];  // y軸
+              ave[2] += zValue[i];  // z軸
             }
-            ave[0] /= raw_count;
-            ave[1] /= raw_count;
-            ave[2] /= raw_count;
+            ave[0] /= raw_count;  // x軸の平均値
+            ave[1] /= raw_count;  // y軸の平均値
+            ave[2] /= raw_count;  // z軸の平均値
+            //////////////////////////////////////////
 
+            //////////////////////////////////////////
             // 各軸の加速度の値を更新
             for (int i = 0; i < raw_count - 1; i++) {
               xValue[i] = xValue[i + 1];
@@ -216,18 +215,25 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
             xValue[raw_count - 1] = x;
             yValue[raw_count - 1] = y;
             zValue[raw_count - 1] = z;
+            //////////////////////////////////////////
 
+            //////////////////////////////////////////
             // 各軸の加速度値から各軸の移動平均値を引く
-            ave[0] = xValue[raw_count-1] - ave[0];
-            ave[1] = yValue[raw_count-1] - ave[1];
-            ave[2] = zValue[raw_count-1] - ave[2];
+            ave[0] = xValue[raw_count-1] - ave[0];  // x軸
+            ave[1] = yValue[raw_count-1] - ave[1];  // y軸
+            ave[2] = zValue[raw_count-1] - ave[2];  // z軸
+            //////////////////////////////////////////
 
+            //////////////////////////////////////////
+            // テキストビューに
+            // 新たに得られた各軸の加速度から移動平均値を引いた値を表示する
             xTextView.setText("X : " + ave[0]);
             yTextView.setText("Y : " + ave[1]);
             zTextView.setText("Z : " + ave[2]);
+            //////////////////////////////////////////
 
             ////////////////////////////////////////////////////////////
-            // 7-13Hzを通すバターワース型バンドパスフィルタをかける
+            // 7-13Hzを通す1次のバターワース型バンドパスフィルタをかける
             xBandValue = butterworth1.filter(ave[0]);
             yBandValue = butterworth1.filter(ave[1]);
             zBandValue = butterworth1.filter(ave[2]);
@@ -239,14 +245,13 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
             ////////////////////////////////////////////////////////////
 
             ////////////////////////////////////////////////////////////
-            // 0.66-2.5Hzを通すバターワース型バンドパスフィルタをかける
+            // 0.66-2.5Hzを通す1次のバターワース型バンドパスフィルタをかける
             if (pulseWaveCnt < FFT_SIZE) {
               pulseWave[pulseWaveCnt] = butterworth2.filter(sumXYZ);
               pulseWaveCnt++;
             } else {
               ////////////////////////////////////////
               // FFTを行う
-
               // データをコピー
               for (int i = 0; i < FFT_SIZE; i++) {
                 fft_data[i] = pulseWave[i];
@@ -255,11 +260,11 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
               fft.realForward(fft_data);
 
               // ピーク周波数を求める
-              maxMagnitude = -1;
               maxInd = 0;
+              maxMagnitude = -1;
               for (int i = 0; i < FFT_SIZE / 2; i++) {
                 magnitude = Math.sqrt( Math.pow(fft_data[2*i], 2) + Math.pow(fft_data[2*i+1], 2) );
-                if ( (double) i * fs / FFT_SIZE >= 0.66 && (double) i * fs / FFT_SIZE <= 2.5 && maxMagnitude < magnitude ) {
+                if (  0.66 <= (double) i * fs / FFT_SIZE && (double) i * fs / FFT_SIZE <= 2.5 && maxMagnitude < magnitude ) {
                   maxMagnitude = magnitude;
                   maxInd = i;
                 }
@@ -280,12 +285,12 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
                 data.addEntry( new Entry( data.getEntryCount(), (float) maxInd * fs / FFT_SIZE *60 ), 0 );
                 data.notifyDataChanged();
               }
-              mChart.notifyDataSetChanged();
+              mChart.notifyDataSetChanged();  // 表示の更新のために変更を通知する
               mChart.setVisibleXRangeMaximum(50); // 表示の幅を決定する
-              mChart.moveViewToX(data.getEntryCount()); // 最新のデータまで表示を移動させる
+              mChart.moveViewToX( data.getEntryCount() ); // 最新のデータまで表示を移動させる
               ///////////////////////////////////////////////////////////
 
-              // 値の更新
+              // pulseWave値の更新
               for (int i = 0; i < pulseWaveCnt - 1; i++) {
                 pulseWave[i] = pulseWave[i + 1];
               }
