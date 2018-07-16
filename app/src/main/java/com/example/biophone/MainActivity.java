@@ -38,10 +38,10 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
 
   // 加速度用の変数
   // 端末が実際に取得した加速度値
-  private float[] currentOrientationValues = { 0.0f, 0.0f, 0.0f };
+  //private float[] currentOrientationValues = { 0.0f, 0.0f, 0.0f };
 
   // ローパス、ハイパスフィルタ後の加速度値
-  private float[] currentAccelerationValues = { 0.0f, 0.0f, 0.0f };
+  //private float[] currentAccelerationValues = { 0.0f, 0.0f, 0.0f };
 
   // 各加速度用の配列
   private double[] xValue = new double[15];
@@ -100,9 +100,10 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
 
   // グラフ用の変数
   LineChart mChart;
-  String[] names = new String[]{"x-value", "y-value", "z-value"};
-  int[] colors = new int[]{Color.RED, Color.GREEN, Color.BLUE};
+  //String[] names = new String[]{"x-value", "y-value", "z-value"};
+  //int[] colors = new int[]{Color.RED, Color.GREEN, Color.BLUE};
 
+  // START / STOPボタン
   Button button = null;
   private boolean flag = true;
 
@@ -135,7 +136,8 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
     // 空のLineData型インスタンスを追加
     mChart.setData(new LineData());
 
-    // 7-13Hzを通す1次のバターワース型バンドパスフィルタの作成
+    // 7-13Hzを通す1次のバターワース型バンドパスフィルタ
+    // .bandPass(フィルタ次数, サンプリング周波数, 中心周波数, 周波数の幅)
     butterworth1.bandPass(1, 100, 10, 6);
 
     // 0.66-2.5Hzを通す1次のバターワース型バンドパスフィルタ
@@ -147,6 +149,7 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
       public void onClick(View v) {
         // flag が true の時
         if (flag){
+          flag = false;
           button.setText("STOP");
 
           //タイマーインスタンス生成
@@ -158,16 +161,14 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
           // タイマースケジュール設定＆開始 mainTimer.schedule(new MainTimerTask(), long delay, long period)
           // delay: はじめのタスクが実行されるまでの時間（単位はミリ秒），period: タスクが実行される周期（単位はミリ秒）
           mainTimer.schedule(mainTimerTask, 100, 10);
-
-          flag = false;
         }
         // flag が false の時
         else {
+          flag = true;
           button.setText("START");
 
           // 実行中のタイマー処理を終了できるタイミングまで処理を行い、以降処理を再開させない
           mainTimer.cancel();
-          flag = true;
         }
       }
     });
@@ -179,7 +180,7 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
       // 定期的に実行したい処理を記述（Viewはさらに別のスレッドが必要）
       mHandler.post( new Runnable() {
         public void run() {
-          // 生データが15個集まったら、平均値を求める
+          // 生データが15個集まったら各軸の平均値を求める
           if (raw_count < 15) {
             // 各加速度の値を更新
             xValue[raw_count] = x;
@@ -244,13 +245,15 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
             sumXYZ = Math.sqrt( Math.pow(xBandValue, 2) + Math.pow(yBandValue, 2) + Math.pow(zBandValue, 2) );
             ////////////////////////////////////////////////////////////
 
-            ////////////////////////////////////////////////////////////
-            // 0.66-2.5Hzを通す1次のバターワース型バンドパスフィルタをかける
+            // 各軸の2乗の和の平方根のデータがFFT_SIZE個集まったらFFTを行う
             if (pulseWaveCnt < FFT_SIZE) {
+              ////////////////////////////////////////////////////////////
+              // 0.66-2.5Hzを通す1次のバターワース型バンドパスフィルタをかける
               pulseWave[pulseWaveCnt] = butterworth2.filter(sumXYZ);
               pulseWaveCnt++;
+              ////////////////////////////////////////////////////////////
             } else {
-              ////////////////////////////////////////
+              ///////////////////////////////////////////////////////////
               // FFTを行う
               // データをコピー
               for (int i = 0; i < FFT_SIZE; i++) {
@@ -271,7 +274,7 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
               }
               System.out.println("maxInd : " + maxInd + "  maxMagnitude : " + maxMagnitude);
               fftTextView.setText("ピーク周波数：" + (double) maxInd * fs / FFT_SIZE + "\n心拍数：" + (double) maxInd * fs / FFT_SIZE * 60);
-              ////////////////////////////////////////
+              ///////////////////////////////////////////////////////////
 
               ///////////////////////////////////////////////////////////
               // グラフの描画
@@ -282,7 +285,7 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
                   set = createSet("heart_rate", Color.BLUE);
                   data.addDataSet(set);
                 }
-                data.addEntry( new Entry( data.getEntryCount(), (float) maxInd * fs / FFT_SIZE *60 ), 0 );
+                data.addEntry( new Entry( data.getEntryCount(), (float) maxInd * fs / FFT_SIZE * 60 ), 0 );
                 data.notifyDataChanged();
               }
               mChart.notifyDataSetChanged();  // 表示の更新のために変更を通知する
@@ -290,13 +293,14 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
               mChart.moveViewToX( data.getEntryCount() ); // 最新のデータまで表示を移動させる
               ///////////////////////////////////////////////////////////
 
+              ////////////////////////////////////////////////////////////
               // pulseWave値の更新
               for (int i = 0; i < pulseWaveCnt - 1; i++) {
                 pulseWave[i] = pulseWave[i + 1];
               }
               pulseWave[pulseWaveCnt - 1] = butterworth2.filter(sumXYZ);
+              ////////////////////////////////////////////////////////////
             }
-            ////////////////////////////////////////////////////////////
 
             // グラフの描画
             /*
