@@ -36,13 +36,6 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
   TextView zTextView;
   TextView fftTextView;
 
-  // 加速度用の変数
-  // 端末が実際に取得した加速度値
-  //private float[] currentOrientationValues = { 0.0f, 0.0f, 0.0f };
-
-  // ローパス、ハイパスフィルタ後の加速度値
-  //private float[] currentAccelerationValues = { 0.0f, 0.0f, 0.0f };
-
   // 各加速度用の配列
   private double[] xValue = new double[15];
   private double[] yValue = new double[15];
@@ -100,8 +93,6 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
 
   // グラフ用の変数
   LineChart mChart;
-  //String[] names = new String[]{"x-value", "y-value", "z-value"};
-  //int[] colors = new int[]{Color.RED, Color.GREEN, Color.BLUE};
 
   // START / STOPボタン
   Button button = null;
@@ -322,18 +313,6 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
   public void onSensorChanged(SensorEvent event) {
     // 加速度センサの値を変数に代入
     if (event.sensor.getType() == Sensor.TYPE_ACCELEROMETER) {
-      // ローパスフィルタで重力値を抽出
-      /*
-      currentOrientationValues[0] = event.values[0] * 0.1f + currentOrientationValues[0] * (1.0f - 0.1f);
-      currentOrientationValues[1] = event.values[1] * 0.1f + currentOrientationValues[1] * (1.0f - 0.1f);
-      currentOrientationValues[2] = event.values[2] * 0.1f + currentOrientationValues[2] * (1.0f - 0.1f);
-
-      // 重力値を取り除く
-      currentAccelerationValues[0] = event.values[0] - currentOrientationValues[0];
-      currentAccelerationValues[1] = event.values[1] - currentOrientationValues[1];
-      currentAccelerationValues[2] = event.values[2] - currentOrientationValues[2];
-      */
-
       x = event.values[0];
       y = event.values[1];
       z = event.values[2];
