@@ -88,7 +88,7 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
   private double yBandValue;
   private double zBandValue;
 
-  private float x, y, z;
+  private double x, y, z;
 
   // 生データの個数をカウントする
   private int raw_count = 0;
@@ -228,20 +228,20 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
 
             ////////////////////////////////////////////////////////////
             // 7-13Hzを通すバターワース型バンドパスフィルタをかける
-            xBandValue = (float) butterworth1.filter(ave[0]);
-            yBandValue = (float) butterworth1.filter(ave[1]);
-            zBandValue = (float) butterworth1.filter(ave[2]);
+            xBandValue = butterworth1.filter(ave[0]);
+            yBandValue = butterworth1.filter(ave[1]);
+            zBandValue = butterworth1.filter(ave[2]);
             ////////////////////////////////////////////////////////////
 
             ////////////////////////////////////////////////////////////
             // 各軸の2乗の和の平方根を求める
-            sumXYZ = (float) Math.sqrt( Math.pow(xBandValue, 2) + Math.pow(yBandValue, 2) + Math.pow(zBandValue, 2) );
+            sumXYZ = Math.sqrt( Math.pow(xBandValue, 2) + Math.pow(yBandValue, 2) + Math.pow(zBandValue, 2) );
             ////////////////////////////////////////////////////////////
 
             ////////////////////////////////////////////////////////////
             // 0.66-2.5Hzを通すバターワース型バンドパスフィルタをかける
             if (pulseWaveCnt < FFT_SIZE) {
-              pulseWave[pulseWaveCnt] = (float) butterworth2.filter(sumXYZ);
+              pulseWave[pulseWaveCnt] = butterworth2.filter(sumXYZ);
               pulseWaveCnt++;
             } else {
               ////////////////////////////////////////
@@ -259,7 +259,7 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
               maxInd = 0;
               for (int i = 0; i < FFT_SIZE / 2; i++) {
                 magnitude = Math.sqrt( Math.pow(fft_data[2*i], 2) + Math.pow(fft_data[2*i+1], 2) );
-                if ((double) i * fs / FFT_SIZE >= 0.66 && (double) i * fs / FFT_SIZE <= 2.5 && maxMagnitude < magnitude) {
+                if ( (double) i * fs / FFT_SIZE >= 0.66 && (double) i * fs / FFT_SIZE <= 2.5 && maxMagnitude < magnitude ) {
                   maxMagnitude = magnitude;
                   maxInd = i;
                 }
@@ -272,7 +272,7 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
               for (int i = 0; i < pulseWaveCnt - 1; i++) {
                 pulseWave[i] = pulseWave[i + 1];
               }
-              pulseWave[pulseWaveCnt - 1] = (float) butterworth2.filter(sumXYZ);
+              pulseWave[pulseWaveCnt - 1] = butterworth2.filter(sumXYZ);
             }
             ////////////////////////////////////////////////////////////
 
