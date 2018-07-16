@@ -301,26 +301,6 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
               pulseWave[pulseWaveCnt - 1] = butterworth2.filter(sumXYZ);
               ////////////////////////////////////////////////////////////
             }
-
-            // グラフの描画
-            /*
-            LineData data = mChart.getLineData();
-            if (data != null) {
-              for (int i = 0; i < 3; i++) { // 3軸なのでそれぞれ処理します
-                ILineDataSet set = data.getDataSetByIndex(i);
-                if (set == null) {
-                  set = createSet(names[i], colors[i]); // ILineDataSetの初期化は別メソッドにまとめました
-                  data.addDataSet(set);
-                }
-                //data.addEntry(new Entry(set.getEntryCount(), currentAccelerationValues[i]), i); // 実際にデータを追加する
-                data.addEntry(new Entry(data.getEntryCount(), (float) ave[i]), i); // 実際にデータを追加する
-                data.notifyDataChanged();
-              }
-              mChart.notifyDataSetChanged(); // 表示の更新のために変更を通知する
-              mChart.setVisibleXRangeMaximum(50); // 表示の幅を決定する
-              mChart.moveViewToX(data.getEntryCount()); // 最新のデータまで表示を移動させる
-            }
-            */
           }
         }
       });
