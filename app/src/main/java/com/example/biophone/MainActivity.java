@@ -87,9 +87,12 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
   private int raw_count = 0;
 
   // タイマー用の変数
-  private Timer mainTimer;					//タイマー用
-  private MainTimerTask mainTimerTask;		//タイマタスククラス
+  private Timer mainTimer;					           //タイマー用
+  private MainTimerTask mainTimerTask;		     //タイマタスククラス
   private Handler mHandler = new Handler();   //UI Threadへのpost用ハンドラ
+  private Timer hrTimer;
+  private HeartRateTimerTask hrTimerTask;
+  private Handler hrHandler = new Handler();
 
   // グラフ用の変数
   LineChart mChart;
@@ -146,12 +149,18 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
           //タイマーインスタンス生成
           mainTimer = new Timer();
 
+          hrTimer = new Timer();
+
           //タスククラスインスタンス生成
           mainTimerTask = new MainTimerTask();
 
+          hrTimerTask = new HeartRateTimerTask();
+
           // タイマースケジュール設定＆開始 mainTimer.schedule(new MainTimerTask(), long delay, long period)
           // delay: はじめのタスクが実行されるまでの時間（単位はミリ秒），period: タスクが実行される周期（単位はミリ秒）
-          mainTimer.schedule(mainTimerTask, 100, 10);
+          mainTimer.schedule(mainTimerTask, 0, 10);
+
+          hrTimer.schedule(hrTimerTask, 0, 1000);
         }
         // flag が false の時
         else {
@@ -160,6 +169,8 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
 
           // 実行中のタイマー処理を終了できるタイミングまで処理を行い、以降処理を再開させない
           mainTimer.cancel();
+
+          hrTimer.cancel();
         }
       }
     });
@@ -219,9 +230,9 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
             //////////////////////////////////////////
             // テキストビューに
             // 新たに得られた各軸の加速度から移動平均値を引いた値を表示する
-            xTextView.setText("X : " + ave[0]);
-            yTextView.setText("Y : " + ave[1]);
-            zTextView.setText("Z : " + ave[2]);
+            //xTextView.setText("X : " + ave[0]);
+            //yTextView.setText("Y : " + ave[1]);
+            //zTextView.setText("Z : " + ave[2]);
             //////////////////////////////////////////
 
             ////////////////////////////////////////////////////////////
@@ -250,9 +261,12 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
               for (int i = 0; i < FFT_SIZE; i++) {
                 fft_data[i] = pulseWave[i];
               }
+
               // FFT
               fft.realForward(fft_data);
+              //////////////////////////////////////////////////////////
 
+              //////////////////////////////////////////////////////////
               // ピーク周波数を求める
               maxInd = 0;
               maxMagnitude = -1;
@@ -263,12 +277,13 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
                   maxInd = i;
                 }
               }
-              System.out.println("maxInd : " + maxInd + "  maxMagnitude : " + maxMagnitude);
-              fftTextView.setText("ピーク周波数：" + (double) maxInd * fs / FFT_SIZE + "\n心拍数：" + (double) maxInd * fs / FFT_SIZE * 60);
+              //System.out.println("maxInd : " + maxInd + "  maxMagnitude : " + maxMagnitude);
+              //fftTextView.setText("ピーク周波数：" + (double) maxInd * fs / FFT_SIZE + "\n心拍数：" + (double) maxInd * fs / FFT_SIZE * 60);
               ///////////////////////////////////////////////////////////
 
               ///////////////////////////////////////////////////////////
               // グラフの描画
+              /*
               LineData data = mChart.getLineData();
               if (data != null) {
                 ILineDataSet set = data.getDataSetByIndex(0);
@@ -282,6 +297,7 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
               mChart.notifyDataSetChanged();  // 表示の更新のために変更を通知する
               mChart.setVisibleXRangeMaximum(50); // 表示の幅を決定する
               mChart.moveViewToX( data.getEntryCount() ); // 最新のデータまで表示を移動させる
+              */
               ///////////////////////////////////////////////////////////
 
               ////////////////////////////////////////////////////////////
@@ -293,6 +309,42 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
               ////////////////////////////////////////////////////////////
             }
           }
+        }
+      });
+    }
+  }
+
+  public class HeartRateTimerTask extends TimerTask {
+    public void run() {
+      hrHandler.post(new Runnable() {
+        @Override
+        public void run() {
+          //////////////////////////////////////////
+          // テキストビューに
+          // 新たに得られた各軸の加速度から移動平均値を引いた値を表示する
+          xTextView.setText("X : " + ave[0]);
+          yTextView.setText("Y : " + ave[1]);
+          zTextView.setText("Z : " + ave[2]);
+          //////////////////////////////////////////
+
+          fftTextView.setText("ピーク周波数：" + (double) maxInd * fs / FFT_SIZE + "\n心拍数：" + (double) maxInd * fs / FFT_SIZE * 60);
+
+          ///////////////////////////////////////////////////////////
+          // グラフの描画
+          LineData data = mChart.getLineData();
+          if (data != null) {
+            ILineDataSet set = data.getDataSetByIndex(0);
+            if (set == null) {
+              set = createSet("heart_rate", Color.BLUE);
+              data.addDataSet(set);
+            }
+            data.addEntry( new Entry( data.getEntryCount(), (float) maxInd * fs / FFT_SIZE * 60 ), 0 );
+            data.notifyDataChanged();
+          }
+          mChart.notifyDataSetChanged();  // 表示の更新のために変更を通知する
+          mChart.setVisibleXRangeMaximum(50); // 表示の幅を決定する
+          mChart.moveViewToX( data.getEntryCount() ); // 最新のデータまで表示を移動させる
+          ///////////////////////////////////////////////////////////
         }
       });
     }
