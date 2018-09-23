@@ -36,6 +36,9 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
   TextView zTextView;
   TextView fftTextView;
 
+  // センサから取得した加速度データ
+  private double x, y, z;
+
   // 各加速度用の配列
   private double[] xValue = new double[15];
   private double[] yValue = new double[15];
@@ -46,6 +49,11 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
 
   // 7-13Hzを通す1次のバターワース型バンドパスフィルタ
   Butterworth butterworth1 = new Butterworth();
+
+  // フィルタ後の各加速度
+  private double xBandValue;
+  private double yBandValue;
+  private double zBandValue;
 
   // 0.66-2.5Hzを通す1次のバターワース型バンドパスフィルタ
   Butterworth butterworth2 = new Butterworth();
@@ -76,12 +84,17 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
   // パルス波形のデータをカウントする
   private int pulseWaveCnt = 0;
 
-  // フィルタ後の各加速度の配列
-  private double xBandValue;
-  private double yBandValue;
-  private double zBandValue;
+  // 心拍数データの最大個数
+  private int HR_SIZE = 100;
 
-  private double x, y, z;
+  // 心拍数データの配列
+  private double[] heartRate = new double[HR_SIZE];
+
+  // 10ミリ秒間隔で算出した心拍数データの平均値
+  private double aveHeartRate;
+
+  // 心拍数のデータをカウントする
+  private int heartRateCnt = 0;
 
   // 生データの個数をカウントする
   private int raw_count = 0;
@@ -222,9 +235,9 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
 
             //////////////////////////////////////////
             // 各軸の加速度値から各軸の移動平均値を引く
-            ave[0] = xValue[raw_count-1] - ave[0];  // x軸
-            ave[1] = yValue[raw_count-1] - ave[1];  // y軸
-            ave[2] = zValue[raw_count-1] - ave[2];  // z軸
+            ave[0] = xValue[raw_count - 1] - ave[0];  // x軸
+            ave[1] = yValue[raw_count - 1] - ave[1];  // y軸
+            ave[2] = zValue[raw_count - 1] - ave[2];  // z軸
             //////////////////////////////////////////
 
             //////////////////////////////////////////
@@ -277,6 +290,25 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
                   maxInd = i;
                 }
               }
+
+              if (heartRateCnt < HR_SIZE) {
+                // 心拍数データの個数が配列の最大値未満
+                heartRate[heartRateCnt] = (double) maxInd * fs / FFT_SIZE * 60;
+                heartRateCnt++;
+              } else {
+                // 10ミリ秒間隔で算出した心拍数データの平均値を求める
+                aveHeartRate = 0;
+                for (int i = 0; i < HR_SIZE; i++) {
+                  aveHeartRate += heartRate[i];
+                }
+                aveHeartRate /= HR_SIZE;
+
+                // 心拍数データの更新
+                for (int i = 0; i < HR_SIZE - 1; i++) {
+                  heartRate[i] = heartRate[i + 1];
+                }
+                heartRate[heartRateCnt - 1] = (double) maxInd * fs / FFT_SIZE * 60;
+              }
               //System.out.println("maxInd : " + maxInd + "  maxMagnitude : " + maxMagnitude);
               //fftTextView.setText("ピーク周波数：" + (double) maxInd * fs / FFT_SIZE + "\n心拍数：" + (double) maxInd * fs / FFT_SIZE * 60);
               ///////////////////////////////////////////////////////////
@@ -327,7 +359,7 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
           zTextView.setText("Z : " + ave[2]);
           //////////////////////////////////////////
 
-          fftTextView.setText("ピーク周波数：" + (double) maxInd * fs / FFT_SIZE + "\n心拍数：" + (double) maxInd * fs / FFT_SIZE * 60);
+          fftTextView.setText("心拍数：" + aveHeartRate);
 
           ///////////////////////////////////////////////////////////
           // グラフの描画
@@ -338,7 +370,7 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
               set = createSet("heart_rate", Color.BLUE);
               data.addDataSet(set);
             }
-            data.addEntry( new Entry( data.getEntryCount(), (float) maxInd * fs / FFT_SIZE * 60 ), 0 );
+            data.addEntry( new Entry( data.getEntryCount(), (float) aveHeartRate ), 0 );
             data.notifyDataChanged();
           }
           mChart.notifyDataSetChanged();  // 表示の更新のために変更を通知する
