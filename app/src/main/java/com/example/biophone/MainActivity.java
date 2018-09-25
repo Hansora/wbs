@@ -36,8 +36,12 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
   TextView zTextView;
   TextView fftTextView;
 
-  // センサから取得した加速度データ
-  private double x, y, z;
+  // 加速度用の変数
+  // 端末が実際に取得した加速度値
+  //private float[] currentOrientationValues = { 0.0f, 0.0f, 0.0f };
+
+  // ローパス、ハイパスフィルタ後の加速度値
+  //private float[] currentAccelerationValues = { 0.0f, 0.0f, 0.0f };
 
   // 各加速度用の配列
   private double[] xValue = new double[15];
@@ -49,11 +53,6 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
 
   // 7-13Hzを通す1次のバターワース型バンドパスフィルタ
   Butterworth butterworth1 = new Butterworth();
-
-  // フィルタ後の各加速度
-  private double xBandValue;
-  private double yBandValue;
-  private double zBandValue;
 
   // 0.66-2.5Hzを通す1次のバターワース型バンドパスフィルタ
   Butterworth butterworth2 = new Butterworth();
@@ -84,31 +83,25 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
   // パルス波形のデータをカウントする
   private int pulseWaveCnt = 0;
 
-  // 心拍数データの最大個数
-  private int HR_SIZE = 100;
+  // フィルタ後の各加速度の配列
+  private double xBandValue;
+  private double yBandValue;
+  private double zBandValue;
 
-  // 心拍数データの配列
-  private double[] heartRate = new double[HR_SIZE];
-
-  // 10ミリ秒間隔で算出した心拍数データの平均値
-  private double aveHeartRate;
-
-  // 心拍数のデータをカウントする
-  private int heartRateCnt = 0;
+  private double x, y, z;
 
   // 生データの個数をカウントする
   private int raw_count = 0;
 
   // タイマー用の変数
-  private Timer mainTimer;					           //タイマー用
-  private MainTimerTask mainTimerTask;		     //タイマタスククラス
+  private Timer mainTimer;					//タイマー用
+  private MainTimerTask mainTimerTask;		//タイマタスククラス
   private Handler mHandler = new Handler();   //UI Threadへのpost用ハンドラ
-  private Timer hrTimer;
-  private HeartRateTimerTask hrTimerTask;
-  private Handler hrHandler = new Handler();
 
   // グラフ用の変数
   LineChart mChart;
+  //String[] names = new String[]{"x-value", "y-value", "z-value"};
+  //int[] colors = new int[]{Color.RED, Color.GREEN, Color.BLUE};
 
   // START / STOPボタン
   Button button = null;
@@ -162,18 +155,12 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
           //タイマーインスタンス生成
           mainTimer = new Timer();
 
-          hrTimer = new Timer();
-
           //タスククラスインスタンス生成
           mainTimerTask = new MainTimerTask();
 
-          hrTimerTask = new HeartRateTimerTask();
-
           // タイマースケジュール設定＆開始 mainTimer.schedule(new MainTimerTask(), long delay, long period)
           // delay: はじめのタスクが実行されるまでの時間（単位はミリ秒），period: タスクが実行される周期（単位はミリ秒）
-          mainTimer.schedule(mainTimerTask, 0, 10);
-
-          hrTimer.schedule(hrTimerTask, 0, 1000);
+          mainTimer.schedule(mainTimerTask, 100, 10);
         }
         // flag が false の時
         else {
@@ -182,8 +169,6 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
 
           // 実行中のタイマー処理を終了できるタイミングまで処理を行い、以降処理を再開させない
           mainTimer.cancel();
-
-          hrTimer.cancel();
         }
       }
     });
@@ -235,17 +220,17 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
 
             //////////////////////////////////////////
             // 各軸の加速度値から各軸の移動平均値を引く
-            ave[0] = xValue[raw_count - 1] - ave[0];  // x軸
-            ave[1] = yValue[raw_count - 1] - ave[1];  // y軸
-            ave[2] = zValue[raw_count - 1] - ave[2];  // z軸
+            ave[0] = xValue[raw_count-1] - ave[0];  // x軸
+            ave[1] = yValue[raw_count-1] - ave[1];  // y軸
+            ave[2] = zValue[raw_count-1] - ave[2];  // z軸
             //////////////////////////////////////////
 
             //////////////////////////////////////////
             // テキストビューに
             // 新たに得られた各軸の加速度から移動平均値を引いた値を表示する
-            //xTextView.setText("X : " + ave[0]);
-            //yTextView.setText("Y : " + ave[1]);
-            //zTextView.setText("Z : " + ave[2]);
+            xTextView.setText("X : " + ave[0]);
+            yTextView.setText("Y : " + ave[1]);
+            zTextView.setText("Z : " + ave[2]);
             //////////////////////////////////////////
 
             ////////////////////////////////////////////////////////////
@@ -274,12 +259,9 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
               for (int i = 0; i < FFT_SIZE; i++) {
                 fft_data[i] = pulseWave[i];
               }
-
               // FFT
               fft.realForward(fft_data);
-              //////////////////////////////////////////////////////////
 
-              //////////////////////////////////////////////////////////
               // ピーク周波数を求める
               maxInd = 0;
               maxMagnitude = -1;
@@ -290,32 +272,12 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
                   maxInd = i;
                 }
               }
-
-              if (heartRateCnt < HR_SIZE) {
-                // 心拍数データの個数が配列の最大値未満
-                heartRate[heartRateCnt] = (double) maxInd * fs / FFT_SIZE * 60;
-                heartRateCnt++;
-              } else {
-                // 10ミリ秒間隔で算出した心拍数データの平均値を求める
-                aveHeartRate = 0;
-                for (int i = 0; i < HR_SIZE; i++) {
-                  aveHeartRate += heartRate[i];
-                }
-                aveHeartRate /= HR_SIZE;
-
-                // 心拍数データの更新
-                for (int i = 0; i < HR_SIZE - 1; i++) {
-                  heartRate[i] = heartRate[i + 1];
-                }
-                heartRate[heartRateCnt - 1] = (double) maxInd * fs / FFT_SIZE * 60;
-              }
-              //System.out.println("maxInd : " + maxInd + "  maxMagnitude : " + maxMagnitude);
-              //fftTextView.setText("ピーク周波数：" + (double) maxInd * fs / FFT_SIZE + "\n心拍数：" + (double) maxInd * fs / FFT_SIZE * 60);
+              System.out.println("maxInd : " + maxInd + "  maxMagnitude : " + maxMagnitude);
+              fftTextView.setText("ピーク周波数：" + (double) maxInd * fs / FFT_SIZE + "\n心拍数：" + (double) maxInd * fs / FFT_SIZE * 60);
               ///////////////////////////////////////////////////////////
 
               ///////////////////////////////////////////////////////////
               // グラフの描画
-              /*
               LineData data = mChart.getLineData();
               if (data != null) {
                 ILineDataSet set = data.getDataSetByIndex(0);
@@ -329,7 +291,6 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
               mChart.notifyDataSetChanged();  // 表示の更新のために変更を通知する
               mChart.setVisibleXRangeMaximum(50); // 表示の幅を決定する
               mChart.moveViewToX( data.getEntryCount() ); // 最新のデータまで表示を移動させる
-              */
               ///////////////////////////////////////////////////////////
 
               ////////////////////////////////////////////////////////////
@@ -340,43 +301,27 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
               pulseWave[pulseWaveCnt - 1] = butterworth2.filter(sumXYZ);
               ////////////////////////////////////////////////////////////
             }
-          }
-        }
-      });
-    }
-  }
 
-  public class HeartRateTimerTask extends TimerTask {
-    public void run() {
-      hrHandler.post(new Runnable() {
-        @Override
-        public void run() {
-          //////////////////////////////////////////
-          // テキストビューに
-          // 新たに得られた各軸の加速度から移動平均値を引いた値を表示する
-          xTextView.setText("X : " + ave[0]);
-          yTextView.setText("Y : " + ave[1]);
-          zTextView.setText("Z : " + ave[2]);
-          //////////////////////////////////////////
-
-          fftTextView.setText("心拍数：" + aveHeartRate);
-
-          ///////////////////////////////////////////////////////////
-          // グラフの描画
-          LineData data = mChart.getLineData();
-          if (data != null) {
-            ILineDataSet set = data.getDataSetByIndex(0);
-            if (set == null) {
-              set = createSet("heart_rate", Color.BLUE);
-              data.addDataSet(set);
+            // グラフの描画
+            /*
+            LineData data = mChart.getLineData();
+            if (data != null) {
+              for (int i = 0; i < 3; i++) { // 3軸なのでそれぞれ処理します
+                ILineDataSet set = data.getDataSetByIndex(i);
+                if (set == null) {
+                  set = createSet(names[i], colors[i]); // ILineDataSetの初期化は別メソッドにまとめました
+                  data.addDataSet(set);
+                }
+                //data.addEntry(new Entry(set.getEntryCount(), currentAccelerationValues[i]), i); // 実際にデータを追加する
+                data.addEntry(new Entry(data.getEntryCount(), (float) ave[i]), i); // 実際にデータを追加する
+                data.notifyDataChanged();
+              }
+              mChart.notifyDataSetChanged(); // 表示の更新のために変更を通知する
+              mChart.setVisibleXRangeMaximum(50); // 表示の幅を決定する
+              mChart.moveViewToX(data.getEntryCount()); // 最新のデータまで表示を移動させる
             }
-            data.addEntry( new Entry( data.getEntryCount(), (float) aveHeartRate ), 0 );
-            data.notifyDataChanged();
+            */
           }
-          mChart.notifyDataSetChanged();  // 表示の更新のために変更を通知する
-          mChart.setVisibleXRangeMaximum(50); // 表示の幅を決定する
-          mChart.moveViewToX( data.getEntryCount() ); // 最新のデータまで表示を移動させる
-          ///////////////////////////////////////////////////////////
         }
       });
     }
@@ -397,6 +342,18 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
   public void onSensorChanged(SensorEvent event) {
     // 加速度センサの値を変数に代入
     if (event.sensor.getType() == Sensor.TYPE_ACCELEROMETER) {
+      // ローパスフィルタで重力値を抽出
+      /*
+      currentOrientationValues[0] = event.values[0] * 0.1f + currentOrientationValues[0] * (1.0f - 0.1f);
+      currentOrientationValues[1] = event.values[1] * 0.1f + currentOrientationValues[1] * (1.0f - 0.1f);
+      currentOrientationValues[2] = event.values[2] * 0.1f + currentOrientationValues[2] * (1.0f - 0.1f);
+
+      // 重力値を取り除く
+      currentAccelerationValues[0] = event.values[0] - currentOrientationValues[0];
+      currentAccelerationValues[1] = event.values[1] - currentOrientationValues[1];
+      currentAccelerationValues[2] = event.values[2] - currentOrientationValues[2];
+      */
+
       x = event.values[0];
       y = event.values[1];
       z = event.values[2];
