@@ -118,7 +118,7 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
 
     // TextViewの取得
     fftTextView = (TextView) findViewById(R.id.fft);
-    fftTextView.setText("計測を開始するには START ボタンをタッチしてください");
+    fftTextView.setText("計測を開始するには START ボタンを\nタッチしてください");
 
     // LineChartの取得
     mChart = (LineChart) findViewById(R.id.lineChart);
@@ -153,7 +153,7 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
         if (flag){
           flag = false;
           button.setText("STOP");
-          fftTextView.setText("計測を再開するには START ボタンをタッチしてください");
+          fftTextView.setText("計測中...");
 
           //タイマーインスタンス生成
           mainTimer = new Timer();
@@ -175,7 +175,7 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
         else {
           flag = true;
           button.setText("START");
-          fftTextView.setText("計測中");
+          fftTextView.setText("計測を再開するには START ボタンをタッチしてください");
 
           // 実行中のタイマー処理を終了できるタイミングまで処理を行い、以降処理を再開させない
           mainTimer.cancel();
