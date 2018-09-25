@@ -26,7 +26,7 @@ import java.util.TimerTask;
 import uk.me.berndporr.iirj.Butterworth;
 
 public class MainActivity extends AppCompatActivity implements SensorEventListener {
-
+  // センサ関連
   SensorManager manager;
   Sensor sensor;
 
