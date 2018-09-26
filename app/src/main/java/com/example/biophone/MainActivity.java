@@ -1,7 +1,5 @@
 package com.example.biophone;
 
-import android.database.SQLException;
-import android.database.sqlite.SQLiteDatabase;
 import android.graphics.Color;
 import android.hardware.Sensor;
 import android.hardware.SensorEvent;
@@ -22,7 +20,6 @@ import com.github.mikephil.charting.interfaces.datasets.ILineDataSet;
 
 import org.jtransforms.fft.DoubleFFT_1D;
 
-import java.util.Calendar;
 import java.util.Timer;
 import java.util.TimerTask;
 
@@ -360,19 +357,6 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
           if (heartRateCnt >= HR_SIZE) {
             // 心拍数（1秒間の平均）を表示する
             fftTextView.setText("心拍数：" + aveHeartRate);
-
-            // 現在の日時を取得
-            CharSequence timeTXT  = android.text.format.DateFormat.format("yyyy-MM-dd kk:mm:ss", Calendar.getInstance());
-
-            // データベースに保存
-            SQLiteDatabase db = db_helper.getWritableDatabase();
-            try {
-              db_helper.insertData(db, timeTXT, aveHeartRate);
-            } catch (SQLException e) {
-              e.printStackTrace();
-            } finally {
-              db.close();
-            }
 
             ///////////////////////////////////////////////////////////
             // グラフの描画
