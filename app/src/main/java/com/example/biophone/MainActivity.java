@@ -18,6 +18,8 @@ import com.github.mikephil.charting.data.LineData;
 import com.github.mikephil.charting.data.LineDataSet;
 import com.github.mikephil.charting.interfaces.datasets.ILineDataSet;
 
+import org.eclipse.paho.android.service.MqttAndroidClient;
+import org.eclipse.paho.client.mqttv3.MqttException;
 import org.jtransforms.fft.DoubleFFT_1D;
 
 import java.util.Timer;
@@ -96,6 +98,9 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
   // 生データの個数をカウントする
   private int raw_count = 0;
 
+  // MQTT 関連
+  private MqttAndroidClient mqttAndroidClient;
+
   // タイマー用の変数
   private Timer mainTimer;					           //タイマー用
   private MainTimerTask mainTimerTask;		     //タイマタスククラス
@@ -110,7 +115,7 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
   // START / STOPボタン
   Button button = null;
   private boolean flag = true;
-  
+
   @Override
   protected void onCreate(Bundle savedInstanceState) {
     super.onCreate(savedInstanceState);
@@ -119,6 +124,14 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
     // TextViewの取得
     fftTextView = (TextView) findViewById(R.id.fft);
     fftTextView.setText("計測を開始するには START ボタンを\nタッチしてください");
+
+    // MQTT のインスタンス生成
+    mqttAndroidClient = new MqttAndroidClient(this, "tcp://153.126.149.235:1883", "piyo"); // (1)
+    try {
+      mqttAndroidClient.connect();  // (2)
+    } catch (MqttException e) {
+      e.printStackTrace();
+    }
 
     // LineChartの取得
     mChart = (LineChart) findViewById(R.id.lineChart);
@@ -175,7 +188,7 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
         else {
           flag = true;
           button.setText("START");
-          fftTextView.setText("計測を再開するには START ボタンをタッチしてください");
+          fftTextView.setText("計測を再開するには START ボタンを\nタッチしてください");
 
           // 実行中のタイマー処理を終了できるタイミングまで処理を行い、以降処理を再開させない
           mainTimer.cancel();
@@ -352,6 +365,7 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
             // 心拍数（1秒間の平均）を表示する
             fftTextView.setText("心拍数：" + aveHeartRate);
 
+            // MQTT でデータを VPS に送信
 
 
             ///////////////////////////////////////////////////////////

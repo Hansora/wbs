@@ -12,8 +12,6 @@
         android:id="@+id/fft"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:layout_alignStart="@+id/zValue"
-        android:layout_below="@+id/zValue"
         android:layout_marginTop="30dp"
         android:textAlignment="center"
         android:textSize="16sp"
