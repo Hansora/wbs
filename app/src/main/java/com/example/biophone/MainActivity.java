@@ -1,7 +1,5 @@
 package com.example.biophone;
 
-import android.database.SQLException;
-import android.database.sqlite.SQLiteDatabase;
 import android.graphics.Color;
 import android.hardware.Sensor;
 import android.hardware.SensorEvent;
@@ -20,6 +18,9 @@ import com.github.mikephil.charting.data.LineData;
 import com.github.mikephil.charting.data.LineDataSet;
 import com.github.mikephil.charting.interfaces.datasets.ILineDataSet;
 
+import org.eclipse.paho.android.service.MqttAndroidClient;
+import org.eclipse.paho.client.mqttv3.MqttException;
+import org.eclipse.paho.client.mqttv3.MqttPersistenceException;
 import org.jtransforms.fft.DoubleFFT_1D;
 
 import java.util.Calendar;
@@ -117,8 +118,8 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
   Button button = null;
   private boolean flag = true;
 
-  // データベース関連
-  private DatabaseHelper db_helper;
+  // MQTT 関連
+  private MqttAndroidClient mqttAndroidClient;
 
   @Override
   protected void onCreate(Bundle savedInstanceState) {
@@ -129,8 +130,15 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
     fftTextView = (TextView) findViewById(R.id.fft);
     fftTextView.setText("計測を開始するには START ボタンを\nタッチしてください");
 
-    // データベースを操作するインスタンス
-    db_helper = new DatabaseHelper(getApplicationContext());
+    // MQTT のインスタンス
+    mqttAndroidClient = new MqttAndroidClient(this.getApplicationContext(), "tcp://153.126.149.235:1883", "");
+
+    // MQTT ブローカに接続
+    try {
+      mqttAndroidClient.connect();  // 接続
+    } catch (MqttException e) {
+      e.printStackTrace();
+    }
 
     // LineChartの取得
     mChart = (LineChart) findViewById(R.id.lineChart);
@@ -249,14 +257,6 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
             ave[2] = zValue[raw_count - 1] - ave[2];  // z軸
             //////////////////////////////////////////
 
-            //////////////////////////////////////////
-            // テキストビューに
-            // 新たに得られた各軸の加速度から移動平均値を引いた値を表示する
-            //xTextView.setText("X : " + ave[0]);
-            //yTextView.setText("Y : " + ave[1]);
-            //zTextView.setText("Z : " + ave[2]);
-            //////////////////////////////////////////
-
             ////////////////////////////////////////////////////////////
             // 7-13Hzを通す1次のバターワース型バンドパスフィルタをかける
             xBandValue = butterworth1.filter(ave[0]);
@@ -321,27 +321,6 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
                 tmp = (double) maxInd * fs / FFT_SIZE * 60;
                 heartRate[heartRateCnt - 1] = (int) tmp;
               }
-              //System.out.println("maxInd : " + maxInd + "  maxMagnitude : " + maxMagnitude);
-              //fftTextView.setText("ピーク周波数：" + (double) maxInd * fs / FFT_SIZE + "\n心拍数：" + (double) maxInd * fs / FFT_SIZE * 60);
-              ///////////////////////////////////////////////////////////
-
-              ///////////////////////////////////////////////////////////
-              // グラフの描画
-              /*
-              LineData data = mChart.getLineData();
-              if (data != null) {
-                ILineDataSet set = data.getDataSetByIndex(0);
-                if (set == null) {
-                  set = createSet("heart_rate", Color.BLUE);
-                  data.addDataSet(set);
-                }
-                data.addEntry( new Entry( data.getEntryCount(), (float) maxInd * fs / FFT_SIZE * 60 ), 0 );
-                data.notifyDataChanged();
-              }
-              mChart.notifyDataSetChanged();  // 表示の更新のために変更を通知する
-              mChart.setVisibleXRangeMaximum(50); // 表示の幅を決定する
-              mChart.moveViewToX( data.getEntryCount() ); // 最新のデータまで表示を移動させる
-              */
               ///////////////////////////////////////////////////////////
 
               ////////////////////////////////////////////////////////////
@@ -370,14 +349,15 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
             // 現在の日時を取得
             CharSequence timeTXT  = android.text.format.DateFormat.format("yyyy-MM-dd kk:mm:ss", Calendar.getInstance());
 
-            // データベースに保存
-            SQLiteDatabase db = db_helper.getWritableDatabase();
+            String message = String.valueOf(timeTXT) + ',' + String.valueOf(aveHeartRate);
+
+            // MQTT で VPS にデータを送信
             try {
-              db_helper.insertData(db, timeTXT, aveHeartRate);
-            } catch (SQLException e) {
+              mqttAndroidClient.publish("topic/heart_rate", message.getBytes(), 0, false);
+            } catch (MqttPersistenceException e) {
               e.printStackTrace();
-            } finally {
-              db.close();
+            } catch (MqttException e) {
+              e.printStackTrace();
             }
 
             ///////////////////////////////////////////////////////////
