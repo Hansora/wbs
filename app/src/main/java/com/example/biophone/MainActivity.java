@@ -110,10 +110,7 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
   // START / STOPボタン
   Button button = null;
   private boolean flag = true;
-
-  // データベース関連
-  private DatabaseHelper db_helper;
-
+  
   @Override
   protected void onCreate(Bundle savedInstanceState) {
     super.onCreate(savedInstanceState);
@@ -122,9 +119,6 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
     // TextViewの取得
     fftTextView = (TextView) findViewById(R.id.fft);
     fftTextView.setText("計測を開始するには START ボタンを\nタッチしてください");
-
-    // データベースを操作するインスタンス
-    db_helper = new DatabaseHelper(getApplicationContext());
 
     // LineChartの取得
     mChart = (LineChart) findViewById(R.id.lineChart);
@@ -357,6 +351,8 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
           if (heartRateCnt >= HR_SIZE) {
             // 心拍数（1秒間の平均）を表示する
             fftTextView.setText("心拍数：" + aveHeartRate);
+
+
 
             ///////////////////////////////////////////////////////////
             // グラフの描画
