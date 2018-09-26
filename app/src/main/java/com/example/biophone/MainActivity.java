@@ -1,5 +1,7 @@
 package com.example.biophone;
 
+import android.database.SQLException;
+import android.database.sqlite.SQLiteDatabase;
 import android.graphics.Color;
 import android.hardware.Sensor;
 import android.hardware.SensorEvent;
@@ -18,10 +20,9 @@ import com.github.mikephil.charting.data.LineData;
 import com.github.mikephil.charting.data.LineDataSet;
 import com.github.mikephil.charting.interfaces.datasets.ILineDataSet;
 
-import org.eclipse.paho.android.service.MqttAndroidClient;
-import org.eclipse.paho.client.mqttv3.MqttException;
 import org.jtransforms.fft.DoubleFFT_1D;
 
+import java.util.Calendar;
 import java.util.Timer;
 import java.util.TimerTask;
 
@@ -98,9 +99,6 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
   // 生データの個数をカウントする
   private int raw_count = 0;
 
-  // MQTT 関連
-  private MqttAndroidClient mqttAndroidClient;
-
   // タイマー用の変数
   private Timer mainTimer;					           //タイマー用
   private MainTimerTask mainTimerTask;		     //タイマタスククラス
@@ -116,6 +114,9 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
   Button button = null;
   private boolean flag = true;
 
+  // データベース関連
+  private DatabaseHelper db_helper;
+
   @Override
   protected void onCreate(Bundle savedInstanceState) {
     super.onCreate(savedInstanceState);
@@ -125,13 +126,8 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
     fftTextView = (TextView) findViewById(R.id.fft);
     fftTextView.setText("計測を開始するには START ボタンを\nタッチしてください");
 
-    // MQTT のインスタンス生成
-    mqttAndroidClient = new MqttAndroidClient(this, "tcp://153.126.149.235:1883", "piyo"); // (1)
-    try {
-      mqttAndroidClient.connect();  // (2)
-    } catch (MqttException e) {
-      e.printStackTrace();
-    }
+    // データベースを操作するインスタンス
+    db_helper = new DatabaseHelper(getApplicationContext());
 
     // LineChartの取得
     mChart = (LineChart) findViewById(R.id.lineChart);
@@ -365,8 +361,18 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
             // 心拍数（1秒間の平均）を表示する
             fftTextView.setText("心拍数：" + aveHeartRate);
 
-            // MQTT でデータを VPS に送信
+            // 現在の日時を取得
+            CharSequence timeTXT  = android.text.format.DateFormat.format("yyyy-MM-dd kk:mm:ss", Calendar.getInstance());
 
+            // データベースに保存
+            SQLiteDatabase db = db_helper.getWritableDatabase();
+            try {
+              db_helper.insertData(db, timeTXT, aveHeartRate);
+            } catch (SQLException e) {
+              e.printStackTrace();
+            } finally {
+              db.close();
+            }
 
             ///////////////////////////////////////////////////////////
             // グラフの描画
