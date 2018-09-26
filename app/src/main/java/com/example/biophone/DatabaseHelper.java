@@ -18,11 +18,11 @@ public class DatabaseHelper extends SQLiteOpenHelper {
 
   @Override
   public void onCreate(SQLiteDatabase db) {
-    String SQL = "CREATE TABLE IF NOT EXISTS heart_rate_" + dateText + " (id INTEGER PRIMARY KEY AUTOINCREMENT, time timestamp, HR float)";
+    String SQL = "CREATE TABLE IF NOT EXISTS heart_rate_" + dateText + " (id INTEGER PRIMARY KEY AUTOINCREMENT, time TIMESTAMP, HR INTEGER)";
     db.execSQL(SQL);
   }
 
-  public void insertData(SQLiteDatabase db, CharSequence time, double HR) {
+  public void insertData(SQLiteDatabase db, CharSequence time, int HR) {
     String SQL = "INSERT INTO heart_rate_" + dateText + " (time, HR) VALUES ('" + time + "', " + HR + ")";
     db.execSQL(SQL);
   }

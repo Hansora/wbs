@@ -84,14 +84,17 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
   // パルス波形のデータをカウントする
   private int pulseWaveCnt = 0;
 
+  // 計算結果を double 型として一時的に保持
+  double tmp;
+
   // 心拍数データの最大個数
   private int HR_SIZE = 100;
 
   // 心拍数データの配列
-  private double[] heartRate = new double[HR_SIZE];
+  private int[] heartRate = new int[HR_SIZE];
 
   // 10ミリ秒間隔で算出した心拍数データの平均値
-  private double aveHeartRate;
+  private int aveHeartRate;
 
   // 心拍数のデータをカウントする
   private int heartRateCnt = 0;
@@ -299,7 +302,8 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
 
               if (heartRateCnt < HR_SIZE) {
                 // 心拍数データの個数が配列の最大値未満
-                heartRate[heartRateCnt] = (double) maxInd * fs / FFT_SIZE * 60;
+                tmp = (double) maxInd * fs / FFT_SIZE * 60;
+                heartRate[heartRateCnt] = (int) tmp;
                 heartRateCnt++;
               } else {
                 // 10ミリ秒間隔で算出した心拍数データの平均値を求める
@@ -307,13 +311,15 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
                 for (int i = 0; i < HR_SIZE; i++) {
                   aveHeartRate += heartRate[i];
                 }
-                aveHeartRate /= HR_SIZE;
+                tmp = aveHeartRate / HR_SIZE;
+                aveHeartRate = (int) tmp;
 
                 // 心拍数データの更新
                 for (int i = 0; i < HR_SIZE - 1; i++) {
                   heartRate[i] = heartRate[i + 1];
                 }
-                heartRate[heartRateCnt - 1] = (double) maxInd * fs / FFT_SIZE * 60;
+                tmp = (double) maxInd * fs / FFT_SIZE * 60;
+                heartRate[heartRateCnt - 1] = (int) tmp;
               }
               //System.out.println("maxInd : " + maxInd + "  maxMagnitude : " + maxMagnitude);
               //fftTextView.setText("ピーク周波数：" + (double) maxInd * fs / FFT_SIZE + "\n心拍数：" + (double) maxInd * fs / FFT_SIZE * 60);
