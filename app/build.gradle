@@ -5,8 +5,8 @@ android {
     buildToolsVersion "25.0.3"
     defaultConfig {
         applicationId "com.example.biophone"
-        minSdkVersion 24
-        targetSdkVersion 26
+        minSdkVersion 26
+        targetSdkVersion 28
         versionCode 1
         versionName "1.0"
         testInstrumentationRunner "android.support.test.runner.AndroidJUnitRunner"
@@ -21,10 +21,12 @@ android {
         exclude 'assets/org/apache/commons/math3/exception/util/LocalizedFormats_fr.properties'
         exclude 'assets/org/apache/commons/math3/random/new-joe-kuo-6.1000'
     }
+    productFlavors {
+    }
 }
 
 dependencies {
-    compile fileTree(dir: 'libs', include: ['*.jar'])
+    compile fileTree(include: ['*.jar'], dir: 'libs')
     androidTestCompile('com.android.support.test.espresso:espresso-core:2.2.2', {
         exclude group: 'com.android.support', module: 'support-annotations'
     })

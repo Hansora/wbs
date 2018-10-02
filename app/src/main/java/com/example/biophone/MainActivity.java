@@ -131,7 +131,7 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
     fftTextView.setText("計測を開始するには START ボタンを\nタッチしてください");
 
     // MQTT のインスタンス
-    mqttAndroidClient = new MqttAndroidClient(this.getApplicationContext(), "tcp://***.***.***.***:****", "");
+    mqttAndroidClient = new MqttAndroidClient(this.getApplicationContext(), "tcp://***:****", "");
 
     // MQTT ブローカに接続
     try {
