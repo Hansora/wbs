@@ -217,8 +217,8 @@ public class HeartRateService extends Service implements SensorEventListener {
       // MQTT ブローカと接続している場合
       if (mqttAndroidClient.isConnected()) {
         mqttAndroidClient.disconnect();  // 切断
+        mqttAndroidClient.unregisterResources();
       }
-      mqttAndroidClient.unregisterResources();
     } catch (MqttException e) {
       e.printStackTrace();
     }
@@ -351,131 +351,6 @@ public class HeartRateService extends Service implements SensorEventListener {
           ////////////////////////////////////////////////////////////
         }
       }
-      /*getAccelHandler.post(new Runnable() {
-        @Override
-        public void run() {
-          // 生データが15個集まったら各軸の平均値を求める
-          if (raw_count < 15) {
-            // 各加速度の値を更新
-            xValue[raw_count] = x;
-            yValue[raw_count] = y;
-            zValue[raw_count] = z;
-            raw_count++;
-          } else {
-            //////////////////////////////////////////
-            // 各軸の加速度の平均値を求める
-            // 平均値の配列を0で初期化する
-            for (int i = 0; i < 3; i++) {
-              ave[i] = 0;
-            }
-
-            // 各軸の加速度の平均値を求める
-            for (int i = 0; i < raw_count; i++) {
-              ave[0] += xValue[i];  // x軸
-              ave[1] += yValue[i];  // y軸
-              ave[2] += zValue[i];  // z軸
-            }
-            ave[0] /= raw_count;  // x軸の平均値
-            ave[1] /= raw_count;  // y軸の平均値
-            ave[2] /= raw_count;  // z軸の平均値
-            //////////////////////////////////////////
-
-            //////////////////////////////////////////
-            // 各軸の加速度の値を更新
-            for (int i = 0; i < raw_count - 1; i++) {
-              xValue[i] = xValue[i + 1];
-              yValue[i] = yValue[i + 1];
-              zValue[i] = zValue[i + 1];
-            }
-            xValue[raw_count - 1] = x;
-            yValue[raw_count - 1] = y;
-            zValue[raw_count - 1] = z;
-            //////////////////////////////////////////
-
-            //////////////////////////////////////////
-            // 各軸の加速度値から各軸の移動平均値を引く
-            ave[0] = xValue[raw_count - 1] - ave[0];  // x軸
-            ave[1] = yValue[raw_count - 1] - ave[1];  // y軸
-            ave[2] = zValue[raw_count - 1] - ave[2];  // z軸
-            //////////////////////////////////////////
-
-            ////////////////////////////////////////////////////////////
-            // 7-13Hzを通す1次のバターワース型バンドパスフィルタをかける
-            xBandValue = butterworth1.filter(ave[0]);
-            yBandValue = butterworth1.filter(ave[1]);
-            zBandValue = butterworth1.filter(ave[2]);
-            ////////////////////////////////////////////////////////////
-
-            ////////////////////////////////////////////////////////////
-            // 各軸の2乗の和の平方根を求める
-            sumXYZ = Math.sqrt( Math.pow(xBandValue, 2) + Math.pow(yBandValue, 2) + Math.pow(zBandValue, 2) );
-            ////////////////////////////////////////////////////////////
-
-            // 各軸の2乗の和の平方根のデータがFFT_SIZE個集まったらFFTを行う
-            if (pulseWaveCnt < FFT_SIZE) {
-              ////////////////////////////////////////////////////////////
-              // 0.66-2.5Hzを通す1次のバターワース型バンドパスフィルタをかける
-              pulseWave[pulseWaveCnt] = butterworth2.filter(sumXYZ);
-              pulseWaveCnt++;
-              ////////////////////////////////////////////////////////////
-            } else {
-              ///////////////////////////////////////////////////////////
-              // FFTを行う
-              // データをコピー
-              for (int i = 0; i < FFT_SIZE; i++) {
-                fft_data[i] = pulseWave[i];
-              }
-
-              // FFT
-              fft.realForward(fft_data);
-              //////////////////////////////////////////////////////////
-
-              //////////////////////////////////////////////////////////
-              // ピーク周波数を求める
-              maxInd = 0;
-              maxMagnitude = -1;
-              for (int i = 0; i < FFT_SIZE / 2; i++) {
-                magnitude = Math.sqrt( Math.pow(fft_data[2*i], 2) + Math.pow(fft_data[2*i+1], 2) );
-                if (  0.66 <= (double) i * fs / FFT_SIZE && (double) i * fs / FFT_SIZE <= 2.5 && maxMagnitude < magnitude ) {
-                  maxMagnitude = magnitude;
-                  maxInd = i;
-                }
-              }
-
-              if (heartRateCnt < HR_SIZE) {
-                // 心拍数データの個数が配列の最大値未満
-                HRtmp = (double) maxInd * fs / FFT_SIZE * 60;
-                heartRate[heartRateCnt] = (int) HRtmp;
-                heartRateCnt++;
-              } else {
-                // 10ミリ秒間隔で算出した心拍数データの平均値を求める
-                aveHeartRate = 0;
-                for (int i = 0; i < HR_SIZE; i++) {
-                  aveHeartRate += heartRate[i];
-                }
-                HRtmp = aveHeartRate / HR_SIZE;
-                aveHeartRate = (int) HRtmp;
-
-                // 心拍数データの更新
-                for (int i = 0; i < HR_SIZE - 1; i++) {
-                  heartRate[i] = heartRate[i + 1];
-                }
-                HRtmp = (double) maxInd * fs / FFT_SIZE * 60;
-                heartRate[heartRateCnt - 1] = (int) HRtmp;
-              }
-              ///////////////////////////////////////////////////////////
-
-              ////////////////////////////////////////////////////////////
-              // pulseWave値の更新
-              for (int i = 0; i < pulseWaveCnt - 1; i++) {
-                pulseWave[i] = pulseWave[i + 1];
-              }
-              pulseWave[pulseWaveCnt - 1] = butterworth2.filter(sumXYZ);
-              ////////////////////////////////////////////////////////////
-            }
-          }
-        }
-      });*/
     }
   }
 
@@ -489,7 +364,7 @@ public class HeartRateService extends Service implements SensorEventListener {
         broadcastIntent.setAction(serviceTAG);
         sendBroadcast(broadcastIntent);
 
-        Log.i("HeartRate : ", String.valueOf(aveHeartRate));
+        Log.i("HeartRate", String.valueOf(aveHeartRate));
 
         // 現在の日時を取得
         CharSequence timeTXT = android.text.format.DateFormat.format("yyyy-MM-dd kk:mm:ss", Calendar.getInstance());
@@ -506,34 +381,6 @@ public class HeartRateService extends Service implements SensorEventListener {
           e.printStackTrace();
         }
       }
-
-      /*hrHandler.post(new Runnable() {
-        @Override
-        public void run() {
-          if (heartRateCnt >= HR_SIZE) {
-            // MainActivity へ取得した心拍数を送信
-            Intent broadcastIntent = new Intent();
-            broadcastIntent.putExtra("heart_rate", aveHeartRate);
-            broadcastIntent.setAction(serviceTAG);
-            sendBroadcast(broadcastIntent);
-
-            // 現在の日時を取得
-            CharSequence timeTXT = android.text.format.DateFormat.format("yyyy-MM-dd kk:mm:ss", Calendar.getInstance());
-
-            // 送信するデータの作成（日付,心拍数）
-            String message = String.valueOf(timeTXT) + ',' + String.valueOf(aveHeartRate);
-
-            // MQTT で VPS にデータを送信
-            try {
-              mqttAndroidClient.publish("topic/heart_rate", message.getBytes(), 0, false);
-            } catch (MqttPersistenceException e) {
-              e.printStackTrace();
-            } catch (MqttException e) {
-              e.printStackTrace();
-            }
-          }
-        }
-      });*/
     }
   }
 

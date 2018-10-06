@@ -8,6 +8,7 @@ import android.content.SharedPreferences;
 import android.graphics.Color;
 import android.os.Build;
 import android.os.Bundle;
+import android.support.v4.content.LocalBroadcastManager;
 import android.support.v7.app.AppCompatActivity;
 import android.view.View;
 import android.widget.Button;
@@ -64,7 +65,7 @@ public class MainActivity extends AppCompatActivity {
     receiver = new MyBroadcastReceiver();
     intentFilter = new IntentFilter();
     intentFilter.addAction(serviceTAG);
-    /*registerReceiver(receiver, intentFilter);*/
+    registerReceiver(receiver, intentFilter);
 
     sharedPreferences = getSharedPreferences(preName, MODE_PRIVATE);
 
@@ -82,8 +83,11 @@ public class MainActivity extends AppCompatActivity {
   public void onPause() {
     super.onPause();
 
-    // ブロードキャストレシーバーを解除する
-    unregisterReceiver(receiver);
+    try {
+      unregisterReceiver(receiver);
+    } catch(IllegalArgumentException e) {
+      e.printStackTrace();
+    }
   }
 
   // ボタンが押された時の処理
@@ -96,7 +100,11 @@ public class MainActivity extends AppCompatActivity {
       button.setText("STOP");
       hrTextView.setText("計測中...");
 
-      registerReceiver(receiver, intentFilter);
+      try {
+        registerReceiver(receiver, intentFilter);
+      } catch(IllegalArgumentException e) {
+        e.printStackTrace();
+      }
 
       Intent i = new Intent(MainActivity.this, HeartRateService.class);
       // 端末の OS バージョンによって処理を変更
@@ -109,7 +117,11 @@ public class MainActivity extends AppCompatActivity {
       flag = true;
       editor.putBoolean(dataFlagPreTag, flag).apply();
 
-      unregisterReceiver(receiver);
+      try {
+        unregisterReceiver(receiver);
+      } catch(IllegalArgumentException e) {
+        e.printStackTrace();
+      }
 
       button.setText("START");
       hrTextView.setText("計測を開始するには START ボタンを\nタッチしてください");
