@@ -1,12 +1,13 @@
 package com.example.biophone;
 
+import android.content.BroadcastReceiver;
+import android.content.Context;
+import android.content.Intent;
+import android.content.IntentFilter;
+import android.content.SharedPreferences;
 import android.graphics.Color;
-import android.hardware.Sensor;
-import android.hardware.SensorEvent;
-import android.hardware.SensorEventListener;
-import android.hardware.SensorManager;
+import android.os.Build;
 import android.os.Bundle;
-import android.os.Handler;
 import android.support.v7.app.AppCompatActivity;
 import android.view.View;
 import android.widget.Button;
@@ -18,108 +19,31 @@ import com.github.mikephil.charting.data.LineData;
 import com.github.mikephil.charting.data.LineDataSet;
 import com.github.mikephil.charting.interfaces.datasets.ILineDataSet;
 
-import org.eclipse.paho.android.service.MqttAndroidClient;
-import org.eclipse.paho.client.mqttv3.MqttException;
-import org.eclipse.paho.client.mqttv3.MqttPersistenceException;
-import org.jtransforms.fft.DoubleFFT_1D;
-
-import java.util.Calendar;
-import java.util.Timer;
-import java.util.TimerTask;
-
-import uk.me.berndporr.iirj.Butterworth;
-
-public class MainActivity extends AppCompatActivity implements SensorEventListener {
-  // センサ関連
-  SensorManager manager;
-  Sensor sensor;
-
+public class MainActivity extends AppCompatActivity {
   // 表示用のテキストビュー
-  TextView fftTextView;
+  TextView hrTextView;
 
-  // センサから取得した加速度データ
-  private double x, y, z;
-
-  // 各加速度用の配列
-  private double[] xValue = new double[15];
-  private double[] yValue = new double[15];
-  private double[] zValue = new double[15];
-
-  // 平均値のための配列
-  double[] ave = new double[3];
-
-  // 7-13Hzを通す1次のバターワース型バンドパスフィルタ
-  Butterworth butterworth1 = new Butterworth();
-
-  // フィルタ後の各加速度
-  private double xBandValue;
-  private double yBandValue;
-  private double zBandValue;
-
-  // 0.66-2.5Hzを通す1次のバターワース型バンドパスフィルタ
-  Butterworth butterworth2 = new Butterworth();
-
-  // 各軸の2乗の和の平方根
-  private double sumXYZ;
-
-  // FFTのサイズ
-  private int FFT_SIZE = 1000;
-
-  // FFTのインスタンス生成
-  DoubleFFT_1D fft = new DoubleFFT_1D(FFT_SIZE);
-
-  // FFT後のデータ配列
-  double[] fft_data = new double[FFT_SIZE];
-
-  // サンプリング周波数
-  int fs = 100;
-
-  // ピーク周波数のための変数
-  int maxInd;
-  double magnitude;
-  double maxMagnitude;
-
-  // パルス波形データの配列
-  private double[] pulseWave = new double[FFT_SIZE];
-
-  // パルス波形のデータをカウントする
-  private int pulseWaveCnt = 0;
-
-  // 計算結果を double 型として一時的に保持
-  double tmp;
-
-  // 心拍数データの最大個数
-  private int HR_SIZE = 100;
-
-  // 心拍数データの配列
-  private int[] heartRate = new int[HR_SIZE];
-
-  // 10ミリ秒間隔で算出した心拍数データの平均値
-  private int aveHeartRate;
-
-  // 心拍数のデータをカウントする
-  private int heartRateCnt = 0;
-
-  // 生データの個数をカウントする
-  private int raw_count = 0;
-
-  // タイマー用の変数
-  private Timer mainTimer;					           //タイマー用
-  private MainTimerTask mainTimerTask;		     //タイマタスククラス
-  private Handler mHandler = new Handler();   //UI Threadへのpost用ハンドラ
-  private Timer hrTimer;
-  private HeartRateTimerTask hrTimerTask;
-  private Handler hrHandler = new Handler();
+  // START / STOPボタン
+  Button button;
 
   // グラフ用の変数
   LineChart mChart;
 
-  // START / STOPボタン
-  Button button = null;
-  private boolean flag = true;
+  MyBroadcastReceiver receiver;
+  IntentFilter intentFilter;
 
-  // MQTT 関連
-  private MqttAndroidClient mqttAndroidClient;
+  private final String preName = "MAIN_SETTING";
+
+  private final String dataFlagPreTag = "dataFPT";
+  private SharedPreferences sharedPreferences;
+  private SharedPreferences.Editor editor;
+
+  private boolean flag;
+
+  private final String serviceTAG = "HeartRateService";
+
+  // 通知関連
+  protected static final int ACTIVITY_ID = 0;
 
   @Override
   protected void onCreate(Bundle savedInstanceState) {
@@ -127,261 +51,104 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
     setContentView(R.layout.activity_main);
 
     // TextViewの取得
-    fftTextView = (TextView) findViewById(R.id.fft);
-    fftTextView.setText("計測を開始するには START ボタンを\nタッチしてください");
+    hrTextView = (TextView) findViewById(R.id.heart_rate);
 
-    // MQTT のインスタンス
-    mqttAndroidClient = new MqttAndroidClient(this.getApplicationContext(), "tcp://***:****", "");
-
-    // MQTT ブローカに接続
-    try {
-      mqttAndroidClient.connect();  // 接続
-    } catch (MqttException e) {
-      e.printStackTrace();
-    }
-
-    // LineChartの取得
-    mChart = (LineChart) findViewById(R.id.lineChart);
+    // グラフ関連
+    mChart = (LineChart) findViewById(R.id.lineChart);  // LineChartの取得
+    mChart.setDescription("");                           // 表のタイトルを空にする
+    mChart.setData(new LineData());                      // 空のLineData型インスタンスを追加
 
     // Buttonの取得
     button = (Button) findViewById(R.id.button);
 
-    // センサーを管理しているサービスの呼び出し
-    manager = (SensorManager)getSystemService(SENSOR_SERVICE);
+    receiver = new MyBroadcastReceiver();
+    intentFilter = new IntentFilter();
+    intentFilter.addAction(serviceTAG);
+    /*registerReceiver(receiver, intentFilter);*/
 
-    // 標準の加速度センサーをsensorに登録
-    sensor = manager.getDefaultSensor(Sensor.TYPE_ACCELEROMETER);
+    sharedPreferences = getSharedPreferences(preName, MODE_PRIVATE);
 
-    // 表のタイトルを空にする
-    mChart.setDescription("");
+    flag = sharedPreferences.getBoolean(dataFlagPreTag, true);
 
-    // 空のLineData型インスタンスを追加
-    mChart.setData(new LineData());
+    if (flag) {
+      hrTextView.setText("計測を開始するには START ボタンを\nタッチしてください");
+      button.setText("START");
+    } else {
+      hrTextView.setText("計測中");
+      button.setText("STOP");
+    }
+  }
 
-    // 7-13Hzを通す1次のバターワース型バンドパスフィルタ
-    // .bandPass(フィルタ次数, サンプリング周波数, 中心周波数, 周波数の幅)
-    butterworth1.bandPass(1, 100, 10, 6);
+  public void onPause() {
+    super.onPause();
 
-    // 0.66-2.5Hzを通す1次のバターワース型バンドパスフィルタ
-    butterworth2.bandPass(1, 100, 1.58, 1.84);
+    // ブロードキャストレシーバーを解除する
+    unregisterReceiver(receiver);
+  }
 
-    // ボタンを押したとき
-    button.setOnClickListener(new View.OnClickListener() {
-      @Override
-      public void onClick(View v) {
-        // flag が true の時
-        if (flag){
-          flag = false;
-          button.setText("STOP");
-          fftTextView.setText("計測中...");
+  // ボタンが押された時の処理
+  public void onClick(View view) {
+    editor = sharedPreferences.edit();
+    if (flag) {
+      flag = false;
+      editor.putBoolean(dataFlagPreTag, flag).apply();
 
-          //タイマーインスタンス生成
-          mainTimer = new Timer();
+      button.setText("STOP");
+      hrTextView.setText("計測中...");
 
-          hrTimer = new Timer();
+      registerReceiver(receiver, intentFilter);
 
-          //タスククラスインスタンス生成
-          mainTimerTask = new MainTimerTask();
-
-          hrTimerTask = new HeartRateTimerTask();
-
-          // タイマースケジュール設定＆開始 mainTimer.schedule(new MainTimerTask(), long delay, long period)
-          // delay: はじめのタスクが実行されるまでの時間（単位はミリ秒），period: タスクが実行される周期（単位はミリ秒）
-          mainTimer.schedule(mainTimerTask, 0, 10);
-
-          hrTimer.schedule(hrTimerTask, 0, 1000);
-        }
-        // flag が false の時
-        else {
-          flag = true;
-          button.setText("START");
-          fftTextView.setText("計測を再開するには START ボタンを\nタッチしてください");
-
-          // 実行中のタイマー処理を終了できるタイミングまで処理を行い、以降処理を再開させない
-          mainTimer.cancel();
-
-          hrTimer.cancel();
-        }
+      Intent i = new Intent(MainActivity.this, HeartRateService.class);
+      // 端末の OS バージョンによって処理を変更
+      if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+        startForegroundService(i);  // API 26 以上（Android OS 8.0 以上）
+      } else {
+        startService(i);
       }
-    });
+    } else {
+      flag = true;
+      editor.putBoolean(dataFlagPreTag, flag).apply();
+
+      unregisterReceiver(receiver);
+
+      button.setText("START");
+      hrTextView.setText("計測を開始するには START ボタンを\nタッチしてください");
+
+      Intent i = new Intent(MainActivity.this, HeartRateService.class);
+      stopService(i);
+    }
   }
 
-  public class MainTimerTask extends TimerTask {
+  public class MyBroadcastReceiver extends BroadcastReceiver {
     @Override
-    public void run() {
-      // 定期的に実行したい処理を記述（Viewはさらに別のスレッドが必要）
-      mHandler.post( new Runnable() {
-        public void run() {
-          // 生データが15個集まったら各軸の平均値を求める
-          if (raw_count < 15) {
-            // 各加速度の値を更新
-            xValue[raw_count] = x;
-            yValue[raw_count] = y;
-            zValue[raw_count] = z;
-            raw_count++;
-          } else {
-            //////////////////////////////////////////
-            // 各軸の加速度の平均値を求める
-            // 平均値の配列を0で初期化する
-            for (int i = 0; i < 3; i++) {
-              ave[i] = 0;
-            }
+    public void onReceive(Context context, Intent intent) {
+      // ブロードキャスト受信時の処理
+      Bundle bundle = intent.getExtras();
+      int heart_rate = bundle.getInt("heart_rate");
 
-            // 各軸の加速度の平均値を求める
-            for (int i = 0; i < raw_count; i++) {
-              ave[0] += xValue[i];  // x軸
-              ave[1] += yValue[i];  // y軸
-              ave[2] += zValue[i];  // z軸
-            }
-            ave[0] /= raw_count;  // x軸の平均値
-            ave[1] /= raw_count;  // y軸の平均値
-            ave[2] /= raw_count;  // z軸の平均値
-            //////////////////////////////////////////
+      // テキストビューに心拍数を表示
+      hrTextView.setText("心拍数 : " + String.valueOf(heart_rate) + "bpm");
 
-            //////////////////////////////////////////
-            // 各軸の加速度の値を更新
-            for (int i = 0; i < raw_count - 1; i++) {
-              xValue[i] = xValue[i + 1];
-              yValue[i] = yValue[i + 1];
-              zValue[i] = zValue[i + 1];
-            }
-            xValue[raw_count - 1] = x;
-            yValue[raw_count - 1] = y;
-            zValue[raw_count - 1] = z;
-            //////////////////////////////////////////
-
-            //////////////////////////////////////////
-            // 各軸の加速度値から各軸の移動平均値を引く
-            ave[0] = xValue[raw_count - 1] - ave[0];  // x軸
-            ave[1] = yValue[raw_count - 1] - ave[1];  // y軸
-            ave[2] = zValue[raw_count - 1] - ave[2];  // z軸
-            //////////////////////////////////////////
-
-            ////////////////////////////////////////////////////////////
-            // 7-13Hzを通す1次のバターワース型バンドパスフィルタをかける
-            xBandValue = butterworth1.filter(ave[0]);
-            yBandValue = butterworth1.filter(ave[1]);
-            zBandValue = butterworth1.filter(ave[2]);
-            ////////////////////////////////////////////////////////////
-
-            ////////////////////////////////////////////////////////////
-            // 各軸の2乗の和の平方根を求める
-            sumXYZ = Math.sqrt( Math.pow(xBandValue, 2) + Math.pow(yBandValue, 2) + Math.pow(zBandValue, 2) );
-            ////////////////////////////////////////////////////////////
-
-            // 各軸の2乗の和の平方根のデータがFFT_SIZE個集まったらFFTを行う
-            if (pulseWaveCnt < FFT_SIZE) {
-              ////////////////////////////////////////////////////////////
-              // 0.66-2.5Hzを通す1次のバターワース型バンドパスフィルタをかける
-              pulseWave[pulseWaveCnt] = butterworth2.filter(sumXYZ);
-              pulseWaveCnt++;
-              ////////////////////////////////////////////////////////////
-            } else {
-              ///////////////////////////////////////////////////////////
-              // FFTを行う
-              // データをコピー
-              for (int i = 0; i < FFT_SIZE; i++) {
-                fft_data[i] = pulseWave[i];
-              }
-
-              // FFT
-              fft.realForward(fft_data);
-              //////////////////////////////////////////////////////////
-
-              //////////////////////////////////////////////////////////
-              // ピーク周波数を求める
-              maxInd = 0;
-              maxMagnitude = -1;
-              for (int i = 0; i < FFT_SIZE / 2; i++) {
-                magnitude = Math.sqrt( Math.pow(fft_data[2*i], 2) + Math.pow(fft_data[2*i+1], 2) );
-                if (  0.66 <= (double) i * fs / FFT_SIZE && (double) i * fs / FFT_SIZE <= 2.5 && maxMagnitude < magnitude ) {
-                  maxMagnitude = magnitude;
-                  maxInd = i;
-                }
-              }
-
-              if (heartRateCnt < HR_SIZE) {
-                // 心拍数データの個数が配列の最大値未満
-                tmp = (double) maxInd * fs / FFT_SIZE * 60;
-                heartRate[heartRateCnt] = (int) tmp;
-                heartRateCnt++;
-              } else {
-                // 10ミリ秒間隔で算出した心拍数データの平均値を求める
-                aveHeartRate = 0;
-                for (int i = 0; i < HR_SIZE; i++) {
-                  aveHeartRate += heartRate[i];
-                }
-                tmp = aveHeartRate / HR_SIZE;
-                aveHeartRate = (int) tmp;
-
-                // 心拍数データの更新
-                for (int i = 0; i < HR_SIZE - 1; i++) {
-                  heartRate[i] = heartRate[i + 1];
-                }
-                tmp = (double) maxInd * fs / FFT_SIZE * 60;
-                heartRate[heartRateCnt - 1] = (int) tmp;
-              }
-              ///////////////////////////////////////////////////////////
-
-              ////////////////////////////////////////////////////////////
-              // pulseWave値の更新
-              for (int i = 0; i < pulseWaveCnt - 1; i++) {
-                pulseWave[i] = pulseWave[i + 1];
-              }
-              pulseWave[pulseWaveCnt - 1] = butterworth2.filter(sumXYZ);
-              ////////////////////////////////////////////////////////////
-            }
-          }
+      ///////////////////////////////////////////////////////////
+      // グラフの描画
+      LineData data = mChart.getLineData();
+      if (data != null) {
+        ILineDataSet set = data.getDataSetByIndex(0);
+        if (set == null) {
+          set = createSet("heart_rate", Color.BLUE);
+          data.addDataSet(set);
         }
-      });
+        data.addEntry(new Entry(data.getEntryCount(), (float) heart_rate), 0);
+        data.notifyDataChanged();
+      }
+      mChart.notifyDataSetChanged();  // 表示の更新のために変更を通知する
+      mChart.setVisibleXRangeMaximum(50); // 表示の幅を決定する
+      mChart.moveViewToX(data.getEntryCount()); // 最新のデータまで表示を移動させる
+      ///////////////////////////////////////////////////////////
     }
   }
 
-  public class HeartRateTimerTask extends TimerTask {
-    public void run() {
-      hrHandler.post(new Runnable() {
-        @Override
-        public void run() {
-          if (heartRateCnt >= HR_SIZE) {
-            // 心拍数（1秒間の平均）を表示する
-            fftTextView.setText("心拍数：" + aveHeartRate);
-
-            // 現在の日時を取得
-            CharSequence timeTXT  = android.text.format.DateFormat.format("yyyy-MM-dd kk:mm:ss", Calendar.getInstance());
-
-            String message = String.valueOf(timeTXT) + ',' + String.valueOf(aveHeartRate);
-
-            // MQTT で VPS にデータを送信
-            try {
-              mqttAndroidClient.publish("topic/heart_rate", message.getBytes(), 0, false);
-            } catch (MqttPersistenceException e) {
-              e.printStackTrace();
-            } catch (MqttException e) {
-              e.printStackTrace();
-            }
-
-            ///////////////////////////////////////////////////////////
-            // グラフの描画
-            LineData data = mChart.getLineData();
-            if (data != null) {
-              ILineDataSet set = data.getDataSetByIndex(0);
-              if (set == null) {
-                set = createSet("heart_rate", Color.BLUE);
-                data.addDataSet(set);
-              }
-              data.addEntry(new Entry(data.getEntryCount(), (float) aveHeartRate), 0);
-              data.notifyDataChanged();
-            }
-            mChart.notifyDataSetChanged();  // 表示の更新のために変更を通知する
-            mChart.setVisibleXRangeMaximum(50); // 表示の幅を決定する
-            mChart.moveViewToX(data.getEntryCount()); // 最新のデータまで表示を移動させる
-            ///////////////////////////////////////////////////////////
-          }
-        }
-      });
-    }
-  }
-
+  // グラフの描画処理
   private LineDataSet createSet(String label, int color) {
     LineDataSet set = new LineDataSet(null, label);
     set.setLineWidth(2.5f); // 線の幅を指定
@@ -390,33 +157,5 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
     set.setDrawValues(false); // 値を表示しない
 
     return set;
-  }
-
-  // センサーの値が変わるたびに呼び出されるメソッド
-  @Override
-  public void onSensorChanged(SensorEvent event) {
-    // 加速度センサの値を変数に代入
-    if (event.sensor.getType() == Sensor.TYPE_ACCELEROMETER) {
-      x = event.values[0];
-      y = event.values[1];
-      z = event.values[2];
-    }
-  }
-
-  @Override
-  public void onAccuracyChanged(Sensor sensor, int accuracy) {
-
-  }
-
-  @Override
-  protected void onResume() {
-    super.onResume();
-    manager.registerListener(this, sensor, SensorManager.SENSOR_DELAY_UI);
-  }
-
-  @Override
-  protected void onPause() {
-    super.onPause();
-    manager.unregisterListener(this);
   }
 }

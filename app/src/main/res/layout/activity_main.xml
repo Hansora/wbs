@@ -9,13 +9,13 @@
     tools:layout_editor_absoluteY="8dp">
 
     <TextView
-        android:id="@+id/fft"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:layout_marginTop="30dp"
-        android:textAlignment="center"
-        android:textSize="16sp"
-        android:textStyle="bold"/>
+      android:id="@+id/heart_rate"
+      android:layout_width="match_parent"
+      android:layout_height="wrap_content"
+      android:layout_marginTop="30dp"
+      android:textAlignment="center"
+      android:textSize="16sp"
+      android:textStyle="bold"/>
 
     <Button
         android:id="@+id/button"
@@ -24,7 +24,8 @@
         android:layout_alignParentBottom="true"
         android:layout_centerHorizontal="true"
         android:layout_marginBottom="41dp"
-        android:text="START"/>
+        android:text="START"
+        android:onClick="onClick" />
 
     <com.github.mikephil.charting.charts.LineChart
         android:id="@+id/lineChart"

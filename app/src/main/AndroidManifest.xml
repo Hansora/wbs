@@ -7,11 +7,12 @@
     <uses-permission android:name="android.permission.INTERNET" />
     <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" />
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
     <!-- edit -->
 
     <application
         android:allowBackup="true"
-        android:icon="@mipmap/ic_launcher"
+        android:icon="@mipmap/ic_launcher_round"
         android:label="@string/app_name"
         android:roundIcon="@mipmap/ic_launcher_round"
         android:supportsRtl="true"
@@ -28,6 +29,8 @@
 
         <!-- edit -->
         <service android:name="org.eclipse.paho.android.service.MqttService" />
+        <service android:name="com.example.biophone.HeartRateService" />
+        <meta-data android:name="net.p_lucky.logpush.accent.color" android:value="#00FFBB" />
         <!-- edit -->
 
     </application>
