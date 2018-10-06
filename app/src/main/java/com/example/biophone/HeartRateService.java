@@ -8,6 +8,7 @@ import android.app.PendingIntent;
 import android.app.Service;
 import android.content.Context;
 import android.content.Intent;
+import android.graphics.BitmapFactory;
 import android.graphics.Color;
 import android.hardware.Sensor;
 import android.hardware.SensorEvent;
@@ -17,6 +18,7 @@ import android.os.Build;
 import android.os.Handler;
 import android.os.IBinder;
 import android.support.annotation.Nullable;
+import android.support.v4.content.ContextCompat;
 import android.util.Log;
 
 import org.eclipse.paho.android.service.MqttAndroidClient;
@@ -177,6 +179,8 @@ public class HeartRateService extends Service implements SensorEventListener {
         .setContentText("サービスは起動中です")
         .setBadgeIconType(R.drawable.lp_ic_alpha_only)
         .setSmallIcon(R.drawable.lp_ic_alpha_only)
+        .setLargeIcon(BitmapFactory.decodeResource(getResources(), R.mipmap.ic_launcher_round))
+        .setColor(ContextCompat.getColor(HeartRateService.this, R.color.colorPrimary))
         .setAutoCancel(true)
         .setContentIntent(
           PendingIntent.getActivity(

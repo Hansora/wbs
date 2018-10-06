@@ -30,7 +30,6 @@
         <!-- edit -->
         <service android:name="org.eclipse.paho.android.service.MqttService" />
         <service android:name="com.example.biophone.HeartRateService" />
-        <meta-data android:name="net.p_lucky.logpush.accent.color" android:value="#00FFBB" />
         <!-- edit -->
 
     </application>
