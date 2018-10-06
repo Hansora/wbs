@@ -177,10 +177,10 @@ public class HeartRateService extends Service implements SensorEventListener {
       Notification notification = new Notification.Builder(this, ChannelID)
         .setContentTitle("Biophone")
         .setContentText("サービスは起動中です")
-        .setBadgeIconType(R.drawable.lp_ic_alpha_only)
-        .setSmallIcon(R.drawable.lp_ic_alpha_only)
+        .setBadgeIconType(R.drawable.hearts_notif_icon)
+        .setSmallIcon(R.drawable.hearts_notif_icon)
         .setLargeIcon(BitmapFactory.decodeResource(getResources(), R.mipmap.ic_launcher_round))
-        .setColor(ContextCompat.getColor(HeartRateService.this, R.color.colorPrimary))
+        .setColor(ContextCompat.getColor(HeartRateService.this, R.color.colorNotifIcon))
         .setAutoCancel(true)
         .setContentIntent(
           PendingIntent.getActivity(
@@ -195,7 +195,9 @@ public class HeartRateService extends Service implements SensorEventListener {
       Notification notification = new Notification.Builder(this)
         .setContentTitle("Biophone")
         .setContentText("サービスは起動中です")
-        .setSmallIcon(R.drawable.lp_ic_alpha_only)
+        .setSmallIcon(R.drawable.hearts_notif_icon)
+        .setLargeIcon(BitmapFactory.decodeResource(getResources(), R.mipmap.ic_launcher_round))
+        .setColor(ContextCompat.getColor(HeartRateService.this, R.color.colorNotifIcon))
         .setAutoCancel(true)
         .setContentIntent(
           PendingIntent.getActivity(
