@@ -15,7 +15,6 @@ import android.hardware.SensorEvent;
 import android.hardware.SensorEventListener;
 import android.hardware.SensorManager;
 import android.os.Build;
-import android.os.Handler;
 import android.os.IBinder;
 import android.support.annotation.Nullable;
 import android.support.v4.content.ContextCompat;
@@ -93,31 +92,25 @@ public class HeartRateService extends Service implements SensorEventListener {
   private int heartRateCnt = 0;                   // 心拍数のデータをカウントする
 
   // タイマー用の変数
-  // 加速度取得用
-  private Timer getAccelTimer;					                //タイマー用
-  private GetAccelTimerTask getAccelTimerTask;	      //タイマタスククラス
-  private Handler getAccelHandler = new Handler();    //UI Thread への post 用ハンドラ
-
-  // 心拍数算出用
-  private Timer hrTimer;
-  private HeartRateTimerTask hrTimerTask;
-  private Handler hrHandler = new Handler();
+  // 加速度取得 & 心拍数算出
+  private Timer heartRateTimer;					                //タイマー用
+  private HeartRateTimerTask heartRateTimerTask;	      //タイマタスククラス
 
   // MQTT 関連
   private MqttAndroidClient mqttAndroidClient;
-  private final String URL = "URLとポート番号を記入";
+  private final String URL = "URLとポートを記入";
 
   // ブロードキャスト（MainActivity へデータを送る）
   private final String serviceTAG = "HeartRateService";
 
   // 通知関連
   private NotificationManager notificationManager;
-
   private static final int NOTIFY_ID = 2212231;                          // 通知 ID
   private static final String ChannelID = "Biophone_channel";         // システムに登録するチャンネル ID（アプリでユニークな ID）
   private static final CharSequence channelName = "Biophone";          // カテゴリー名（通知設定画面に表示される情報）
   private static final int imp = NotificationManager.IMPORTANCE_HIGH;  // チャンネルの重要度（0～4）
   private static final String desc = "Biophone の通知設定";             // 通知の詳細情報（通知設定画面に表示される情報）
+
 
   public void onCreate() {
     super.onCreate();
@@ -148,17 +141,14 @@ public class HeartRateService extends Service implements SensorEventListener {
     butterworth2.bandPass(1, 100, 1.58, 1.84);
 
     // タイマーインスタンスを生成
-    getAccelTimer = new Timer();
-    hrTimer = new Timer();
+    heartRateTimer = new Timer();
 
     // タイマータスクインスタンスを生成
-    getAccelTimerTask = new GetAccelTimerTask();
-    hrTimerTask = new HeartRateTimerTask();
+    heartRateTimerTask = new HeartRateTimerTask();
 
     // タイマースケジュール設定＆開始 mainTimer.schedule(new MainTimerTask(), long delay, long period)
     // delay: はじめのタスクが実行されるまでの時間（単位はミリ秒），period: タスクが実行される周期（単位はミリ秒）
-    getAccelTimer.schedule(getAccelTimerTask, 0, 10);
-    hrTimer.schedule(hrTimerTask, 0, 1000);
+    heartRateTimer.schedule(heartRateTimerTask, 0, 10);
   }
 
   public int onStartCommand(Intent intent, int flags, int startId) {
@@ -218,6 +208,9 @@ public class HeartRateService extends Service implements SensorEventListener {
     notificationManager.cancel(NOTIFY_ID);
     sensorManager.unregisterListener(this);
 
+    // 実行中のタイマー処理を終了できるタイミングまで処理を行い、以降処理を再開させない
+    heartRateTimer.cancel();
+
     // MQTT ブローカとの接続を切断
     try {
       // MQTT ブローカと接続している場合
@@ -228,13 +221,10 @@ public class HeartRateService extends Service implements SensorEventListener {
     } catch (MqttException e) {
       e.printStackTrace();
     }
-
-    // 実行中のタイマー処理を終了できるタイミングまで処理を行い、以降処理を再開させない
-    getAccelTimer.cancel();
-    hrTimer.cancel();
   }
 
-  public class GetAccelTimerTask extends TimerTask {
+  // 心拍数を計測する処理（MainActivity とは別のスレッド）
+  public class HeartRateTimerTask extends TimerTask {
     @Override
     public void run() {
       // 生データが15個集まったら各軸の平均値を求める
@@ -294,7 +284,7 @@ public class HeartRateService extends Service implements SensorEventListener {
         sumXYZ = Math.sqrt( Math.pow(xBandValue, 2) + Math.pow(yBandValue, 2) + Math.pow(zBandValue, 2) );
         ////////////////////////////////////////////////////////////
 
-        // 各軸の2乗の和の平方根のデータがFFT_SIZE個集まったらFFTを行う
+        // 各軸の2乗の和の平方根のデータ（pulseWave 配列）がFFT_SIZE個集まったらFFTを行う
         if (pulseWaveCnt < FFT_SIZE) {
           ////////////////////////////////////////////////////////////
           // 0.66-2.5Hzを通す1次のバターワース型バンドパスフィルタをかける
@@ -303,12 +293,21 @@ public class HeartRateService extends Service implements SensorEventListener {
           ////////////////////////////////////////////////////////////
         } else {
           ///////////////////////////////////////////////////////////
-          // FFTを行う
           // データをコピー
           for (int i = 0; i < FFT_SIZE; i++) {
             fft_data[i] = pulseWave[i];
           }
+          ///////////////////////////////////////////////////////////
 
+          ////////////////////////////////////////////////////////////
+          // pulseWave値の更新
+          for (int i = 0; i < pulseWaveCnt - 1; i++) {
+            pulseWave[i] = pulseWave[i + 1];
+          }
+          pulseWave[pulseWaveCnt - 1] = butterworth2.filter(sumXYZ);
+          ////////////////////////////////////////////////////////////
+
+          //////////////////////////////////////////////////////////
           // FFT
           fft.realForward(fft_data);
           //////////////////////////////////////////////////////////
@@ -324,13 +323,20 @@ public class HeartRateService extends Service implements SensorEventListener {
               maxInd = i;
             }
           }
+          //////////////////////////////////////////////////////////
 
+          ///////////////////////////////////////////////////////////
+          // 1 秒間に計測した心拍数の平均値を求める（heartRateCnt が HR_SIZE 以上の場合）
           if (heartRateCnt < HR_SIZE) {
             // 心拍数データの個数が配列の最大値未満
-            HRtmp = (double) maxInd * fs / FFT_SIZE * 60;
-            heartRate[heartRateCnt] = (int) HRtmp;
+            HRtmp = (double) maxInd * fs / FFT_SIZE * 60;   // 心拍数を算出
+            heartRate[heartRateCnt] = (int) HRtmp;          // 整数に変換
             heartRateCnt++;
           } else {
+            // heartRateCnt を初期化
+            heartRateCnt = 0;
+
+            //////////////////////////////////////////////////////////
             // 10ミリ秒間隔で算出した心拍数データの平均値を求める
             aveHeartRate = 0;
             for (int i = 0; i < HR_SIZE; i++) {
@@ -338,53 +344,44 @@ public class HeartRateService extends Service implements SensorEventListener {
             }
             HRtmp = aveHeartRate / HR_SIZE;
             aveHeartRate = (int) HRtmp;
+            //////////////////////////////////////////////////////////
 
+            //////////////////////////////////////////////////////////
             // 心拍数データの更新
             for (int i = 0; i < HR_SIZE - 1; i++) {
               heartRate[i] = heartRate[i + 1];
             }
             HRtmp = (double) maxInd * fs / FFT_SIZE * 60;
-            heartRate[heartRateCnt - 1] = (int) HRtmp;
+            heartRate[HR_SIZE - 1] = (int) HRtmp;
+            //////////////////////////////////////////////////////////
+
+            //////////////////////////////////////////////////////////
+            // MainActivity へ取得した心拍数を送信
+            Intent broadcastIntent = new Intent();
+            broadcastIntent.putExtra("heart_rate", aveHeartRate);
+            broadcastIntent.setAction(serviceTAG);
+            sendBroadcast(broadcastIntent);
+            //////////////////////////////////////////////////////////
+
+            Log.i("HeartRate", String.valueOf(aveHeartRate));
+
+            ////////////////////////////////////////////////////////////
+            // 現在の日時を取得
+            CharSequence timeTXT = android.text.format.DateFormat.format("yyyy-MM-dd kk:mm:ss", Calendar.getInstance());
+
+            // 送信するデータの作成（日付,心拍数）
+            String message = String.valueOf(timeTXT) + ',' + String.valueOf(aveHeartRate);
+
+            // MQTT で VPS にデータを送信
+            try {
+              mqttAndroidClient.publish("topic/heart_rate", message.getBytes(), 0, false);
+            } catch (MqttPersistenceException e) {
+              e.printStackTrace();
+            } catch (MqttException e) {
+              e.printStackTrace();
+            }
+            ////////////////////////////////////////////////////////////
           }
-          ///////////////////////////////////////////////////////////
-
-          ////////////////////////////////////////////////////////////
-          // pulseWave値の更新
-          for (int i = 0; i < pulseWaveCnt - 1; i++) {
-            pulseWave[i] = pulseWave[i + 1];
-          }
-          pulseWave[pulseWaveCnt - 1] = butterworth2.filter(sumXYZ);
-          ////////////////////////////////////////////////////////////
-        }
-      }
-    }
-  }
-
-  public class HeartRateTimerTask extends TimerTask {
-    @Override
-    public void run() {
-      if (heartRateCnt >= HR_SIZE) {
-        // MainActivity へ取得した心拍数を送信
-        Intent broadcastIntent = new Intent();
-        broadcastIntent.putExtra("heart_rate", aveHeartRate);
-        broadcastIntent.setAction(serviceTAG);
-        sendBroadcast(broadcastIntent);
-
-        Log.i("HeartRate", String.valueOf(aveHeartRate));
-
-        // 現在の日時を取得
-        CharSequence timeTXT = android.text.format.DateFormat.format("yyyy-MM-dd kk:mm:ss", Calendar.getInstance());
-
-        // 送信するデータの作成（日付,心拍数）
-        String message = String.valueOf(timeTXT) + ',' + String.valueOf(aveHeartRate);
-
-        // MQTT で VPS にデータを送信
-        try {
-          mqttAndroidClient.publish("topic/heart_rate", message.getBytes(), 0, false);
-        } catch (MqttPersistenceException e) {
-          e.printStackTrace();
-        } catch (MqttException e) {
-          e.printStackTrace();
         }
       }
     }
@@ -401,6 +398,7 @@ public class HeartRateService extends Service implements SensorEventListener {
     }
   }
 
+  // センサの精度を変更する際に呼び出されるメソッド
   @Override
   public void onAccuracyChanged(Sensor sensor, int accuracy) {
 
