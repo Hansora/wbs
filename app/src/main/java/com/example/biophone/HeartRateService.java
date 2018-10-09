@@ -148,7 +148,7 @@ public class HeartRateService extends Service implements SensorEventListener {
 
     // タイマースケジュール設定＆開始 mainTimer.schedule(new MainTimerTask(), long delay, long period)
     // delay: はじめのタスクが実行されるまでの時間（単位はミリ秒），period: タスクが実行される周期（単位はミリ秒）
-    heartRateTimer.schedule(heartRateTimerTask, 0, 10);
+    heartRateTimer.schedule(heartRateTimerTask, 5000, 10);
   }
 
   public int onStartCommand(Intent intent, int flags, int startId) {
