@@ -88,7 +88,8 @@ public class HeartRateService extends Service implements SensorEventListener {
   // 心拍数データ関連
   private int HR_SIZE = 100;                       // 心拍数データの個数
   private int[] heartRate = new int[HR_SIZE];   // 心拍数データの配列
-  private int aveHeartRate;                       // 10ミリ秒間隔で算出した心拍数データの平均値
+  private int aveHRtmp;                           // 10ミリ秒間隔で算出した心拍数データの平均値（計算用）
+  private int aveHR = 0;                           // 10ミリ秒間隔で算出した心拍数データの平均値（送信用）
   private int heartRateCnt = 0;                   // 心拍数のデータをカウントする
 
   // タイマー用の変数
@@ -96,9 +97,13 @@ public class HeartRateService extends Service implements SensorEventListener {
   private Timer heartRateTimer;					                //タイマー用
   private HeartRateTimerTask heartRateTimerTask;	      //タイマタスククラス
 
+  // 心拍数送信用
+  private Timer sendHeartRateTimer;
+  private SendHeartRateTimerTask sendHeartRateTimerTask;
+
   // MQTT 関連
   private MqttAndroidClient mqttAndroidClient;
-  private final String URL = "URLとポートを記入";
+  private final String URL = "URLとポート番号を記入";
 
   // ブロードキャスト（MainActivity へデータを送る）
   private final String serviceTAG = "HeartRateService";
@@ -142,13 +147,16 @@ public class HeartRateService extends Service implements SensorEventListener {
 
     // タイマーインスタンスを生成
     heartRateTimer = new Timer();
+    sendHeartRateTimer = new Timer();
 
     // タイマータスクインスタンスを生成
     heartRateTimerTask = new HeartRateTimerTask();
+    sendHeartRateTimerTask = new SendHeartRateTimerTask();
 
     // タイマースケジュール設定＆開始 mainTimer.schedule(new MainTimerTask(), long delay, long period)
     // delay: はじめのタスクが実行されるまでの時間（単位はミリ秒），period: タスクが実行される周期（単位はミリ秒）
     heartRateTimer.schedule(heartRateTimerTask, 5000, 10);
+    sendHeartRateTimer.schedule(sendHeartRateTimerTask, 5000, 1000);
   }
 
   public int onStartCommand(Intent intent, int flags, int startId) {
@@ -210,6 +218,7 @@ public class HeartRateService extends Service implements SensorEventListener {
 
     // 実行中のタイマー処理を終了できるタイミングまで処理を行い、以降処理を再開させない
     heartRateTimer.cancel();
+    sendHeartRateTimer.cancel();
 
     // MQTT ブローカとの接続を切断
     try {
@@ -325,7 +334,6 @@ public class HeartRateService extends Service implements SensorEventListener {
           }
           //////////////////////////////////////////////////////////
 
-          ///////////////////////////////////////////////////////////
           // 1 秒間に計測した心拍数の平均値を求める（heartRateCnt が HR_SIZE 以上の場合）
           if (heartRateCnt < HR_SIZE) {
             // 心拍数データの個数が配列の最大値未満
@@ -333,17 +341,14 @@ public class HeartRateService extends Service implements SensorEventListener {
             heartRate[heartRateCnt] = (int) HRtmp;          // 整数に変換
             heartRateCnt++;
           } else {
-            // heartRateCnt を初期化
-            heartRateCnt = 0;
-
             //////////////////////////////////////////////////////////
             // 10ミリ秒間隔で算出した心拍数データの平均値を求める
-            aveHeartRate = 0;
+            aveHRtmp = 0;
             for (int i = 0; i < HR_SIZE; i++) {
-              aveHeartRate += heartRate[i];
+              aveHRtmp += heartRate[i];
             }
-            HRtmp = aveHeartRate / HR_SIZE;
-            aveHeartRate = (int) HRtmp;
+            HRtmp = aveHRtmp / HR_SIZE;
+            aveHR = (int) HRtmp;           // 送信用変数に値を代入
             //////////////////////////////////////////////////////////
 
             //////////////////////////////////////////////////////////
@@ -354,35 +359,42 @@ public class HeartRateService extends Service implements SensorEventListener {
             HRtmp = (double) maxInd * fs / FFT_SIZE * 60;
             heartRate[HR_SIZE - 1] = (int) HRtmp;
             //////////////////////////////////////////////////////////
-
-            //////////////////////////////////////////////////////////
-            // MainActivity へ取得した心拍数を送信
-            Intent broadcastIntent = new Intent();
-            broadcastIntent.putExtra("heart_rate", aveHeartRate);
-            broadcastIntent.setAction(serviceTAG);
-            sendBroadcast(broadcastIntent);
-            //////////////////////////////////////////////////////////
-
-            Log.i("HeartRate", String.valueOf(aveHeartRate));
-
-            ////////////////////////////////////////////////////////////
-            // 現在の日時を取得
-            CharSequence timeTXT = android.text.format.DateFormat.format("yyyy-MM-dd kk:mm:ss", Calendar.getInstance());
-
-            // 送信するデータの作成（日付,心拍数）
-            String message = String.valueOf(timeTXT) + ',' + String.valueOf(aveHeartRate);
-
-            // MQTT で VPS にデータを送信
-            try {
-              mqttAndroidClient.publish("topic/heart_rate", message.getBytes(), 0, false);
-            } catch (MqttPersistenceException e) {
-              e.printStackTrace();
-            } catch (MqttException e) {
-              e.printStackTrace();
-            }
-            ////////////////////////////////////////////////////////////
           }
         }
+      }
+    }
+  }
+
+  public class SendHeartRateTimerTask extends TimerTask {
+    @Override
+    public void run() {
+      if (heartRateCnt >= HR_SIZE && aveHR != 0) {
+        //////////////////////////////////////////////////////////
+        // MainActivity へ取得した心拍数を送信
+        Intent broadcastIntent = new Intent();
+        broadcastIntent.putExtra("heart_rate", aveHR);
+        broadcastIntent.setAction(serviceTAG);
+        sendBroadcast(broadcastIntent);
+        //////////////////////////////////////////////////////////
+
+        Log.i("HeartRate", String.valueOf(aveHR));
+
+        ////////////////////////////////////////////////////////////
+        // 現在の日時を取得
+        CharSequence timeTXT = android.text.format.DateFormat.format("yyyy-MM-dd kk:mm:ss", Calendar.getInstance());
+
+        // 送信するデータの作成（日付,心拍数）
+        String message = String.valueOf(timeTXT) + ',' + String.valueOf(aveHR);
+
+        // MQTT で VPS にデータを送信
+        try {
+          mqttAndroidClient.publish("topic/heart_rate", message.getBytes(), 0, false);
+        } catch (MqttPersistenceException e) {
+          e.printStackTrace();
+        } catch (MqttException e) {
+          e.printStackTrace();
+        }
+        ////////////////////////////////////////////////////////////
       }
     }
   }
