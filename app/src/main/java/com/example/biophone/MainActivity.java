@@ -27,9 +27,6 @@ public class MainActivity extends AppCompatActivity {
   // START / STOPボタン
   Button button;
 
-  // グラフ用の変数
-  LineChart mChart;
-
   MyBroadcastReceiver receiver;
   IntentFilter intentFilter;
 
