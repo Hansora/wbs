@@ -54,11 +54,6 @@ public class MainActivity extends AppCompatActivity {
     // TextViewの取得
     hrTextView = (TextView) findViewById(R.id.heart_rate);
 
-    // グラフ関連
-    mChart = (LineChart) findViewById(R.id.lineChart);  // LineChartの取得
-    mChart.setDescription("");                           // 表のタイトルを空にする
-    mChart.setData(new LineData());                      // 空のLineData型インスタンスを追加
-
     // Buttonの取得
     button = (Button) findViewById(R.id.button);
 
@@ -140,34 +135,6 @@ public class MainActivity extends AppCompatActivity {
 
       // テキストビューに心拍数を表示
       hrTextView.setText("心拍数 : " + String.valueOf(heart_rate) + "bpm");
-
-      ///////////////////////////////////////////////////////////
-      // グラフの描画
-      LineData data = mChart.getLineData();
-      if (data != null) {
-        ILineDataSet set = data.getDataSetByIndex(0);
-        if (set == null) {
-          set = createSet("heart_rate", Color.BLUE);
-          data.addDataSet(set);
-        }
-        data.addEntry(new Entry(data.getEntryCount(), (float) heart_rate), 0);
-        data.notifyDataChanged();
-      }
-      mChart.notifyDataSetChanged();  // 表示の更新のために変更を通知する
-      mChart.setVisibleXRangeMaximum(50); // 表示の幅を決定する
-      mChart.moveViewToX(data.getEntryCount()); // 最新のデータまで表示を移動させる
-      ///////////////////////////////////////////////////////////
     }
-  }
-
-  // グラフの描画処理
-  private LineDataSet createSet(String label, int color) {
-    LineDataSet set = new LineDataSet(null, label);
-    set.setLineWidth(2.5f); // 線の幅を指定
-    set.setColor(color); // 線の色を指定
-    set.setDrawCircles(false); // ポイントごとの円を表示しない
-    set.setDrawValues(false); // 値を表示しない
-
-    return set;
   }
 }
