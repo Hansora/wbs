@@ -1,5 +1,6 @@
 package com.example.biophone;
 
+import android.app.ProgressDialog;
 import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
@@ -8,11 +9,18 @@ import android.content.SharedPreferences;
 import android.graphics.Color;
 import android.os.Build;
 import android.os.Bundle;
+import android.support.annotation.IdRes;
 import android.support.v4.content.LocalBroadcastManager;
 import android.support.v7.app.AppCompatActivity;
+import android.util.Log;
+import android.view.Gravity;
 import android.view.View;
 import android.widget.Button;
+import android.widget.EditText;
+import android.widget.RadioButton;
+import android.widget.RadioGroup;
 import android.widget.TextView;
+import android.widget.Toast;
 
 import com.github.mikephil.charting.charts.LineChart;
 import com.github.mikephil.charting.data.Entry;
@@ -20,118 +28,152 @@ import com.github.mikephil.charting.data.LineData;
 import com.github.mikephil.charting.data.LineDataSet;
 import com.github.mikephil.charting.interfaces.datasets.ILineDataSet;
 
+import org.json.JSONObject;
+import org.w3c.dom.Text;
+
+import java.io.IOError;
+import java.lang.annotation.Target;
+import java.lang.reflect.Field;
+
 public class MainActivity extends AppCompatActivity {
-  // 表示用のテキストビュー
-  TextView hrTextView;
+  TextView err_msgTextView;
+  EditText userIdEdit;
+  EditText ageEdit;
+  RadioGroup radioGroup;
+  Button sendBtn;
 
-  // START / STOPボタン
-  Button button;
+  String userId;
+  int age;
+  String gender = null;
+  boolean send_data_flag;
 
-  MyBroadcastReceiver receiver;
-  IntentFilter intentFilter;
+  AsyncHttpTask httpTask;
+  String data;
+  private ProgressDialog progressDialog;
 
-  private final String preName = "MAIN_SETTING";
-
-  private final String dataFlagPreTag = "dataFPT";
+  private String preName = "INITIAL_SETTING";
+  private final String dataWakePreTag = "dataWPT";
+  private final String dataUserIdPreTag = "dataUIPT";
   private SharedPreferences sharedPreferences;
   private SharedPreferences.Editor editor;
-
-  private boolean flag;
-
-  private final String serviceTAG = "HeartRateService";
-
-  // 通知関連
-  protected static final int ACTIVITY_ID = 0;
+  private int wake;
 
   @Override
   protected void onCreate(Bundle savedInstanceState) {
     super.onCreate(savedInstanceState);
     setContentView(R.layout.activity_main);
 
-    // TextViewの取得
-    hrTextView = (TextView) findViewById(R.id.heart_rate);
-
-    // Buttonの取得
-    button = (Button) findViewById(R.id.button);
-
-    receiver = new MyBroadcastReceiver();
-    intentFilter = new IntentFilter();
-    intentFilter.addAction(serviceTAG);
-    registerReceiver(receiver, intentFilter);
-
+    // 端末に保存しておく変数（アプリをアンインストールするまで保持する）
     sharedPreferences = getSharedPreferences(preName, MODE_PRIVATE);
 
-    flag = sharedPreferences.getBoolean(dataFlagPreTag, true);
+    wake = sharedPreferences.getInt(dataWakePreTag, 0);
+    userId = sharedPreferences.getString(dataUserIdPreTag, "");
 
-    if (flag) {
-      hrTextView.setText("計測を開始するには START ボタンを\nタッチしてください");
-      button.setText("START");
+    Log.i("wake", String.valueOf(wake));
+
+    if (wake > 0) {
+      // 初回起動時ではない
+      // Second Activity へ移動
+      Intent second_activity = new Intent(getApplication(), SecondActivity.class);
+      second_activity.putExtra("userId", userId);
+      startActivity(second_activity);
+      finish();
     } else {
-      hrTextView.setText("計測中");
-      button.setText("STOP");
+      // 初回起動時
+      err_msgTextView = findViewById(R.id.err_msg);
+      sendBtn = findViewById(R.id.send_btn);
+
+      userIdEdit = findViewById(R.id.user_id);
+      ageEdit = findViewById(R.id.age);
+
+      // ラジオボタンの設定
+      radioGroup = findViewById(R.id.radioGroup);
+      radioGroup.setOnCheckedChangeListener(new RadioGroup.OnCheckedChangeListener() {
+        @Override
+        public void onCheckedChanged(RadioGroup group, @IdRes int checkedId) {
+          switch (checkedId) {
+            case R.id.male:
+              // 男性が選択された
+              gender = "male";
+              break;
+
+            case R.id.female:
+              // 女性が選択された
+              gender = "female";
+              break;
+
+            default:
+              // 何も選択されていない
+              gender = "";
+              break;
+          }
+        }
+      });
     }
   }
 
-  public void onPause() {
-    super.onPause();
+  // 送信ボタンが押された場合の処理
+  public void onSendBtnClick(View view) {
+    err_msgTextView.setText("");
 
-    try {
-      unregisterReceiver(receiver);
-    } catch(IllegalArgumentException e) {
-      e.printStackTrace();
-    }
-  }
+    // すべて記入されているかを確認
+    if ( userIdEdit.getText().toString().length() != 0 && ageEdit.getText().toString().length() != 0 && gender != null ) {
+      userId = userIdEdit.getText().toString();
+      age = Integer.parseInt( ageEdit.getText().toString() );
+      data = "userId=" + userId + "&" + "age=" + String.valueOf(age) + "&" + "gender=" + gender;
 
-  // ボタンが押された時の処理
-  public void onClick(View view) {
-    editor = sharedPreferences.edit();
-    if (flag) {
-      flag = false;
-      editor.putBoolean(dataFlagPreTag, flag).apply();
+      // ユーザ ID, 年齢, 性別を VPS へ送信
+      // send_data_flag = 送信処理
+      httpTask = new AsyncHttpTask(progressDialog, MainActivity.this);
+      httpTask.setOnCallBack( new AsyncHttpTask.CallBackTask() {
+        @Override
+        public void CallBack(String result) {
+          super.CallBack(result);
+          // 非同期処理が終わった後の処理
+          // result には, doInBackgroud メソッドの戻り値が入る
 
-      button.setText("STOP");
-      hrTextView.setText("計測中...");
+          Log.i("result", result);
 
-      try {
-        registerReceiver(receiver, intentFilter);
-      } catch(IllegalArgumentException e) {
-        e.printStackTrace();
-      }
+          if (result == "Connection failed") {
+            err_msgTextView.setText("サーバに接続できませんでした。\nネットワークの設定を確認してください。");
+          } else {
+            String status = "";
+            try {
+              JSONObject jsonObject = new JSONObject(result);
+              status = jsonObject.getString("status");
+              userId = jsonObject.getString("userId");
+            } catch (Exception e) {
+              e.printStackTrace();
+            }
 
-      Intent i = new Intent(MainActivity.this, HeartRateService.class);
-      // 端末の OS バージョンによって処理を変更
-      if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-        startForegroundService(i);  // API 26 以上（Android OS 8.0 以上）
-      } else {
-        startService(i);
-      }
+            Log.i("status", status);
+
+            if ("OK".equals(status)) {
+              // 送信した際にユーザ ID が重複していなければ次のアクティビティへ移動
+              Log.i("status", "OK");
+              err_msgTextView.setText("status : OK");
+
+              wake = 1;
+              editor = sharedPreferences.edit();
+              editor.putInt(dataWakePreTag, wake).apply();
+              editor.putString(dataUserIdPreTag, userId).apply();
+
+              // SecondActivity へ移動
+              Intent second_activity = new Intent(getApplication(), SecondActivity.class);
+              second_activity.putExtra("userId", userId);
+              startActivity(second_activity);
+              finish();
+            } else {
+              Log.i("status", "NO");
+              err_msgTextView.setText("記入したユーザ ID は、既に使用されています。");
+            }
+          }
+        }
+      });
+      httpTask.execute("http://rdlab.dip.jp:23123/cgi-bin/id_check.py",data);
     } else {
-      flag = true;
-      editor.putBoolean(dataFlagPreTag, flag).apply();
-
-      try {
-        unregisterReceiver(receiver);
-      } catch(IllegalArgumentException e) {
-        e.printStackTrace();
-      }
-
-      button.setText("START");
-      hrTextView.setText("計測を開始するには START ボタンを\nタッチしてください");
-
-      Intent i = new Intent(MainActivity.this, HeartRateService.class);
-      stopService(i);
-    }
-  }
-
-  public class MyBroadcastReceiver extends BroadcastReceiver {
-    @Override
-    public void onReceive(Context context, Intent intent) {
-      // ブロードキャスト受信時の処理
-      Bundle bundle = intent.getExtras();
-      int heart_rate = bundle.getInt("heart_rate");
-
-      // テキストビューに心拍数を表示
-      hrTextView.setText("心拍数 : " + String.valueOf(heart_rate) + "bpm");
+      // err_msg に表示
+      err_msgTextView.setText("入力または選択されていない項目があります。");
     }
   }
 }

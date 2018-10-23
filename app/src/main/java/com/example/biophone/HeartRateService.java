@@ -103,9 +103,9 @@ public class HeartRateService extends Service implements SensorEventListener {
 
   // MQTT 関連
   private MqttAndroidClient mqttAndroidClient;
-  private final String URL = "URLとポート番号を記入";
+  private final String URL = "tcp://rdlab.dip.jp:1883";
 
-  // ブロードキャスト（MainActivity へデータを送る）
+  // ブロードキャスト（SecondActivity へデータを送る）
   private final String serviceTAG = "HeartRateService";
 
   // 通知関連
@@ -116,9 +116,16 @@ public class HeartRateService extends Service implements SensorEventListener {
   private static final int imp = NotificationManager.IMPORTANCE_HIGH;  // チャンネルの重要度（0～4）
   private static final String desc = "Biophone の通知設定";             // 通知の詳細情報（通知設定画面に表示される情報）
 
+  // ユーザ ID
+  String userId;
+
 
   public void onCreate() {
     super.onCreate();
+
+    // ユーザ ID を受け取る
+    Intent intent = new Intent();
+    userId = intent.getStringExtra("userId");
 
     // MQTT のインスタンス
     mqttAndroidClient  = new MqttAndroidClient(HeartRateService.this, URL, "");
@@ -182,8 +189,8 @@ public class HeartRateService extends Service implements SensorEventListener {
         .setAutoCancel(true)
         .setContentIntent(
           PendingIntent.getActivity(
-            this, MainActivity.ACTIVITY_ID,
-            new Intent(this, MainActivity.class), PendingIntent.FLAG_CANCEL_CURRENT
+            this, SecondActivity.ACTIVITY_ID,
+            new Intent(this, SecondActivity.class), PendingIntent.FLAG_CANCEL_CURRENT
           )
         )
         .build();
@@ -199,8 +206,8 @@ public class HeartRateService extends Service implements SensorEventListener {
         .setAutoCancel(true)
         .setContentIntent(
           PendingIntent.getActivity(
-            this, MainActivity.ACTIVITY_ID,
-            new Intent(this, MainActivity.class), PendingIntent.FLAG_CANCEL_CURRENT
+            this, SecondActivity.ACTIVITY_ID,
+            new Intent(this, SecondActivity.class), PendingIntent.FLAG_CANCEL_CURRENT
           )
         )
         .build();
@@ -232,7 +239,7 @@ public class HeartRateService extends Service implements SensorEventListener {
     }
   }
 
-  // 心拍数を計測する処理（MainActivity とは別のスレッド）
+  // 心拍数を計測する処理（SecondActivity とは別のスレッド）
   public class HeartRateTimerTask extends TimerTask {
     @Override
     public void run() {
@@ -370,7 +377,7 @@ public class HeartRateService extends Service implements SensorEventListener {
     public void run() {
       if (heartRateCnt >= HR_SIZE && aveHR != 0) {
         //////////////////////////////////////////////////////////
-        // MainActivity へ取得した心拍数を送信
+        // SecondActivity へ取得した心拍数を送信
         Intent broadcastIntent = new Intent();
         broadcastIntent.putExtra("heart_rate", aveHR);
         broadcastIntent.setAction(serviceTAG);
@@ -383,8 +390,8 @@ public class HeartRateService extends Service implements SensorEventListener {
         // 現在の日時を取得
         CharSequence timeTXT = android.text.format.DateFormat.format("yyyy-MM-dd kk:mm:ss", Calendar.getInstance());
 
-        // 送信するデータの作成（日付,心拍数）
-        String message = String.valueOf(timeTXT) + ',' + String.valueOf(aveHR);
+        // 送信するデータの作成（ユーザ ID,日付,心拍数）
+        String message = userId + "," + String.valueOf(timeTXT) + ',' + String.valueOf(aveHR);
 
         // MQTT で VPS にデータを送信
         try {
