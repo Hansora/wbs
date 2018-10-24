@@ -170,7 +170,7 @@ public class MainActivity extends AppCompatActivity {
           }
         }
       });
-      httpTask.execute("http://rdlab.dip.jp:23123/cgi-bin/id_check.py",data);
+      httpTask.execute("URLを記入",data);
     } else {
       // err_msg に表示
       err_msgTextView.setText("入力または選択されていない項目があります。");
