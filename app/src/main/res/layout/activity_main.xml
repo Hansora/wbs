@@ -20,58 +20,59 @@
     android:textSize="18sp"/>
 
   <TextView
-    android:id="@+id/user_id_textView"
-    android:layout_width="70dp"
-    android:layout_height="wrap_content"
-    android:text="ユーザID"
-    android:textColor="@android:color/background_dark"
-    android:textSize="18sp"
-    android:layout_marginStart="82dp"
-    android:layout_alignBaseline="@+id/user_id"
-    android:layout_alignBottom="@+id/user_id"
-    android:layout_alignParentStart="true"/>
+      android:id="@+id/user_id_textView"
+      android:layout_width="wrap_content"
+      android:layout_height="wrap_content"
+      android:layout_marginStart="23dp"
+      android:text="ユーザID"
+      android:textColor="@android:color/background_dark"
+      android:textSize="18sp"
+      android:layout_alignBaseline="@+id/user_id"
+      android:layout_alignBottom="@+id/user_id"
+      android:layout_alignParentStart="true"/>
 
   <EditText
-    android:id="@+id/user_id"
-    android:layout_width="160dp"
-    android:layout_height="wrap_content"
-    android:layout_below="@+id/err_msg"
-    android:layout_marginStart="17dp"
-    android:layout_marginTop="33dp"
-    android:layout_toEndOf="@+id/user_id_textView"
-    android:hint="学籍番号を入力（半角）"
-    android:textSize="12sp"/>
+      android:id="@+id/user_id"
+      android:layout_width="210dp"
+      android:layout_height="wrap_content"
+      android:layout_marginTop="16dp"
+      android:hint="学籍番号を入力（半角）"
+      android:textAlignment="center"
+      android:textSize="18sp"
+      android:layout_below="@+id/err_msg"
+      android:layout_toEndOf="@+id/user_id_textView"
+      android:layout_marginStart="18dp"/>
 
   <TextView
-    android:id="@+id/age_textView"
-    android:layout_width="40dp"
-    android:layout_height="wrap_content"
-    android:layout_marginTop="100dp"
-    android:text="年齢"
-    android:textColor="@android:color/background_dark"
-    android:textSize="18sp"
-    android:layout_below="@+id/user_id"
-    android:layout_toStartOf="@+id/age"/>
+      android:id="@+id/age_textView"
+      android:layout_width="wrap_content"
+      android:layout_height="wrap_content"
+      android:layout_marginTop="67dp"
+      android:text="年齢"
+      android:textColor="@android:color/background_dark"
+      android:textSize="18sp"
+      android:layout_below="@+id/user_id"
+      android:layout_alignEnd="@+id/user_id_textView"/>
 
   <EditText
-    android:id="@+id/age"
-    android:layout_width="30dp"
-    android:layout_height="wrap_content"
-    android:ems="10"
-    android:inputType="number"
-    android:layout_marginStart="24dp"
-    android:layout_alignBaseline="@+id/age_textView"
-    android:layout_alignBottom="@+id/age_textView"
-    android:layout_alignStart="@+id/user_id"/>
+      android:id="@+id/age"
+      android:layout_width="wrap_content"
+      android:layout_height="wrap_content"
+      android:layout_alignBaseline="@+id/age_textView"
+      android:layout_alignBottom="@+id/age_textView"
+      android:layout_alignStart="@+id/user_id"
+      android:ems="10"
+      android:inputType="number"
+      android:textAlignment="center"/>
 
   <RadioGroup
     android:id="@+id/radioGroup"
     android:layout_width="wrap_content"
     android:layout_height="wrap_content"
     android:orientation="horizontal"
-    android:layout_below="@+id/age"
+    android:layout_above="@+id/send_btn"
     android:layout_centerHorizontal="true"
-    android:layout_marginTop="94dp">
+    android:layout_marginBottom="91dp">
 
     <RadioButton
       android:id="@+id/male"

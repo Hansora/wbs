@@ -103,7 +103,7 @@ public class HeartRateService extends Service implements SensorEventListener {
 
   // MQTT 関連
   private MqttAndroidClient mqttAndroidClient;
-  private final String URL = "tcp://rdlab.dip.jp:1883";
+  private final String URL = "URLを記入";
 
   // ブロードキャスト（SecondActivity へデータを送る）
   private final String serviceTAG = "HeartRateService";
@@ -122,10 +122,6 @@ public class HeartRateService extends Service implements SensorEventListener {
 
   public void onCreate() {
     super.onCreate();
-
-    // ユーザ ID を受け取る
-    Intent intent = new Intent();
-    userId = intent.getStringExtra("userId");
 
     // MQTT のインスタンス
     mqttAndroidClient  = new MqttAndroidClient(HeartRateService.this, URL, "");
@@ -167,6 +163,9 @@ public class HeartRateService extends Service implements SensorEventListener {
   }
 
   public int onStartCommand(Intent intent, int flags, int startId) {
+    // ユーザ ID を受け取る
+    userId = intent.getStringExtra("userId");
+
     // 通知設定
     notificationManager = (NotificationManager) getSystemService(Context.NOTIFICATION_SERVICE);
 
@@ -190,7 +189,7 @@ public class HeartRateService extends Service implements SensorEventListener {
         .setContentIntent(
           PendingIntent.getActivity(
             this, SecondActivity.ACTIVITY_ID,
-            new Intent(this, SecondActivity.class), PendingIntent.FLAG_CANCEL_CURRENT
+            new Intent(this, MainActivity.class), PendingIntent.FLAG_CANCEL_CURRENT
           )
         )
         .build();
@@ -207,7 +206,7 @@ public class HeartRateService extends Service implements SensorEventListener {
         .setContentIntent(
           PendingIntent.getActivity(
             this, SecondActivity.ACTIVITY_ID,
-            new Intent(this, SecondActivity.class), PendingIntent.FLAG_CANCEL_CURRENT
+            new Intent(this, MainActivity.class), PendingIntent.FLAG_CANCEL_CURRENT
           )
         )
         .build();
@@ -384,14 +383,14 @@ public class HeartRateService extends Service implements SensorEventListener {
         sendBroadcast(broadcastIntent);
         //////////////////////////////////////////////////////////
 
-        Log.i("HeartRate", String.valueOf(aveHR));
-
         ////////////////////////////////////////////////////////////
         // 現在の日時を取得
         CharSequence timeTXT = android.text.format.DateFormat.format("yyyy-MM-dd kk:mm:ss", Calendar.getInstance());
 
         // 送信するデータの作成（ユーザ ID,日付,心拍数）
         String message = userId + "," + String.valueOf(timeTXT) + ',' + String.valueOf(aveHR);
+
+        Log.i("data", message);
 
         // MQTT で VPS にデータを送信
         try {

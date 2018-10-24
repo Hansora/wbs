@@ -8,6 +8,7 @@ import android.content.SharedPreferences;
 import android.os.Build;
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
+import android.util.Log;
 import android.view.View;
 import android.widget.Button;
 import android.widget.TextView;
@@ -44,8 +45,10 @@ public class SecondActivity extends AppCompatActivity {
     setContentView(R.layout.activity_second);
 
     // MainActivity からユーザ ID を受け取る
-    Intent intent = new Intent();
+    final Intent intent = getIntent();
     userId = intent.getStringExtra("userId");
+
+    Log.i("userId", userId);
 
     // TextViewの取得
     hrTextView = findViewById(R.id.heart_rate);

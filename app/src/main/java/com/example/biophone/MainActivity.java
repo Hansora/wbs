@@ -134,7 +134,7 @@ public class MainActivity extends AppCompatActivity {
 
           Log.i("result", result);
 
-          if (result == "Connection failed") {
+          if ("Connection failed".equals(result)) {
             err_msgTextView.setText("サーバに接続できませんでした。\nネットワークの設定を確認してください。");
           } else {
             String status = "";
@@ -146,12 +146,10 @@ public class MainActivity extends AppCompatActivity {
               e.printStackTrace();
             }
 
-            Log.i("status", status);
-
             if ("OK".equals(status)) {
               // 送信した際にユーザ ID が重複していなければ次のアクティビティへ移動
-              Log.i("status", "OK");
-              err_msgTextView.setText("status : OK");
+              Log.i("status", status);
+              Log.i("userId", userId);
 
               wake = 1;
               editor = sharedPreferences.edit();
@@ -159,18 +157,18 @@ public class MainActivity extends AppCompatActivity {
               editor.putString(dataUserIdPreTag, userId).apply();
 
               // SecondActivity へ移動
-              Intent second_activity = new Intent(getApplication(), SecondActivity.class);
+              Intent second_activity = new Intent(MainActivity.this, SecondActivity.class);
               second_activity.putExtra("userId", userId);
               startActivity(second_activity);
               finish();
             } else {
-              Log.i("status", "NO");
+              Log.i("status", status);
               err_msgTextView.setText("記入したユーザ ID は、既に使用されています。");
             }
           }
         }
       });
-      httpTask.execute("http://rdlab.dip.jp:23123/cgi-bin/id_check.py",data);
+      httpTask.execute("URLを記入",data);
     } else {
       // err_msg に表示
       err_msgTextView.setText("入力または選択されていない項目があります。");
