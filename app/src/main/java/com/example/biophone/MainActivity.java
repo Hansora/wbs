@@ -22,11 +22,6 @@ import android.widget.RadioGroup;
 import android.widget.TextView;
 import android.widget.Toast;
 
-import com.github.mikephil.charting.charts.LineChart;
-import com.github.mikephil.charting.data.Entry;
-import com.github.mikephil.charting.data.LineData;
-import com.github.mikephil.charting.data.LineDataSet;
-import com.github.mikephil.charting.interfaces.datasets.ILineDataSet;
 
 import org.json.JSONObject;
 import org.w3c.dom.Text;
@@ -66,7 +61,7 @@ public class MainActivity extends AppCompatActivity {
     // 端末に保存しておく変数（アプリをアンインストールするまで保持する）
     sharedPreferences = getSharedPreferences(preName, MODE_PRIVATE);
 
-    wake = sharedPreferences.getInt(dataWakePreTag, 0);
+    wake = sharedPreferences.getInt(dataWakePreTag, 1);
     userId = sharedPreferences.getString(dataUserIdPreTag, "");
 
     Log.i("wake", String.valueOf(wake));
@@ -74,8 +69,11 @@ public class MainActivity extends AppCompatActivity {
     if (wake > 0) {
       // 初回起動時ではない
       // Second Activity へ移動
-      Intent second_activity = new Intent(getApplication(), SecondActivity.class);
-      second_activity.putExtra("userId", userId);
+      Intent second_activity = new Intent(getApplication(), SecondPrimaryActivity.class);
+ //     second_activity.putExtra("userId", userId);
+      userId = "hogehoge";
+      editor = sharedPreferences.edit();
+      editor.putString(dataUserIdPreTag, userId).apply();
       startActivity(second_activity);
       finish();
     } else {
@@ -156,8 +154,10 @@ public class MainActivity extends AppCompatActivity {
               editor.putInt(dataWakePreTag, wake).apply();
               editor.putString(dataUserIdPreTag, userId).apply();
 
+
+
               // SecondActivity へ移動
-              Intent second_activity = new Intent(MainActivity.this, SecondActivity.class);
+              Intent second_activity = new Intent(MainActivity.this, SecondPrimaryActivity.class);
               second_activity.putExtra("userId", userId);
               startActivity(second_activity);
               finish();

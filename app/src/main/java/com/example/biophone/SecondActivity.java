@@ -13,6 +13,7 @@ import android.view.View;
 import android.widget.Button;
 import android.widget.TextView;
 
+
 public class SecondActivity extends AppCompatActivity {
   // 表示用のテキストビュー
   TextView hrTextView;
@@ -29,6 +30,10 @@ public class SecondActivity extends AppCompatActivity {
   private SharedPreferences sharedPreferences;
   private SharedPreferences.Editor editor;
 
+  private String reName = "INITIAL_SETTING";
+  private final String dataUserIdPreTag = "dataUIPT";
+  private SharedPreferences sharedsecondPreferences;
+
   private boolean flag;
 
   private final String serviceTAG = "HeartRateService";
@@ -44,9 +49,12 @@ public class SecondActivity extends AppCompatActivity {
     super.onCreate(savedInstanceState);
     setContentView(R.layout.activity_second);
 
+    sharedsecondPreferences = getSharedPreferences(reName, MODE_PRIVATE);
+    userId = sharedsecondPreferences.getString(dataUserIdPreTag, "");
+
     // MainActivity からユーザ ID を受け取る
-    final Intent intent = getIntent();
-    userId = intent.getStringExtra("userId");
+//    final Intent intent = getIntent();
+//    userId = intent.getStringExtra("userId");
 
     Log.i("userId", userId);
 

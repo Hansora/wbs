@@ -103,7 +103,7 @@ public class HeartRateService extends Service implements SensorEventListener {
 
   // MQTT 関連
   private MqttAndroidClient mqttAndroidClient;
-  private final String URL = "URLを記入";
+  private final String URL = "http://rdlab.dip.jp";
 
   // ブロードキャスト（SecondActivity へデータを送る）
   private final String serviceTAG = "HeartRateService";
